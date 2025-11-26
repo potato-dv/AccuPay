@@ -21,7 +21,7 @@ AccuPay is a comprehensive payroll management system designed for Philippine bus
 - Leave credits management (Vacation, Sick, Emergency)
 - Employment status tracking (Active, On-leave, Terminated)
 
-#### 2. **Work Schedule System** ⭐ NEW
+#### 2. **Work Schedule System** NEW
 - **Pre-defined Schedule Templates:**
   - Standard Mon-Fri (8hrs) - 40 hours/week
   - Standard Mon-Sat (8hrs) - 48 hours/week
@@ -356,12 +356,6 @@ AccuPay is a comprehensive payroll management system designed for Philippine bus
 
 ---
 
-## Testing Instructions
-
-See `TESTING_GUIDE.md` for detailed testing procedures.
-
----
-
 ## Support and Maintenance
 
 ### Recommended Maintenance Schedule:
@@ -369,14 +363,6 @@ See `TESTING_GUIDE.md` for detailed testing procedures.
 - **Quarterly:** Review tax tables for BIR updates
 - **Annually:** Update holiday calendar
 - **As needed:** Add new employees, update schedules
-
-### Data Backup:
-**CRITICAL:** Ensure daily database backups are configured. Payroll data is sensitive and must be protected.
-
-```bash
-# Example backup command
-./vendor/bin/sail artisan backup:run
-```
 
 ---
 
@@ -388,14 +374,3 @@ See `TESTING_GUIDE.md` for detailed testing procedures.
 - **Frontend:** Blade Templates, CSS, JavaScript
 - **Server:** Laravel Sail (Docker)
 
----
-
-## Contact for Development
-
-For feature requests, bug reports, or system enhancements, contact your development team with specific requirements from this documentation.
-
----
-
-**Document Version:** 1.0  
-**Last Review Date:** November 25, 2025  
-**Next Review:** Quarterly or upon major system changes

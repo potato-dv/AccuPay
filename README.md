@@ -62,47 +62,6 @@ AccuPay is a comprehensive payroll management system designed for Philippine bus
 
 ---
 
-## Quick Start
-
-### Prerequisites
-- Docker Desktop
-- Git
-- Laravel Sail
-
-### Installation
-
-1. **Clone the repository**
-```bash
-git clone <repository-url>
-cd accupay
-```
-
-2. **Install dependencies**
-```bash
-composer install
-npm install
-```
-
-3. **Start Laravel Sail**
-```bash
-./vendor/bin/sail up -d
-```
-
-4. **Run migrations**
-```bash
-./vendor/bin/sail artisan migrate
-```
-
-5. **Seed work schedules**
-```bash
-./vendor/bin/sail artisan db:seed --class=WorkScheduleSeeder
-```
-
-6. **Access the application**
-- **Employee Portal:** http://localhost/employee/dashboard
-- **Admin Portal:** http://localhost/admin/dashboard
-- **PhpMyAdmin:** http://localhost:8082
-
 ### Default Credentials
 
 **Admin Account:**
@@ -189,8 +148,6 @@ Each schedule includes:
 - Overtime settings
 - Grace period for late arrivals
 
-See [WORK_SCHEDULE_GUIDE.md](WORK_SCHEDULE_GUIDE.md) for details.
-
 ---
 
 ## Technical Stack
@@ -198,7 +155,7 @@ See [WORK_SCHEDULE_GUIDE.md](WORK_SCHEDULE_GUIDE.md) for details.
 - **Framework:** Laravel 12.39.0
 - **PHP:** 8.4.15
 - **Database:** MySQL 8.0
-- **Frontend:** Blade Templates, CSS, JavaScript
+- **Frontend:** Blade Templates, CSS
 - **Icons:** Font Awesome 7.0.1
 - **Server:** Laravel Sail (Docker)
 
@@ -214,13 +171,6 @@ See [WORK_SCHEDULE_GUIDE.md](WORK_SCHEDULE_GUIDE.md) for details.
 - `payrolls` - Payroll period information
 - `payslips` - Employee payslips
 - `users` - System authentication
-
-### Key Relationships
-- Employee → WorkSchedule (Many to One)
-- Employee → Attendance (One to Many)
-- Employee → LeaveApplications (One to Many)
-- Employee → Payslips (One to Many)
-- Payslip → Payroll (Many to One)
 
 ---
 
@@ -270,43 +220,6 @@ See [WORK_SCHEDULE_GUIDE.md](WORK_SCHEDULE_GUIDE.md) for details.
 ⚠️ Holiday calendar management  
 ⚠️ Compliance reports (BIR Alphalist, SSS R3)  
 
-See [SYSTEM_DOCUMENTATION.md](SYSTEM_DOCUMENTATION.md) for complete compliance details.
-
----
-
-## Development Roadmap
-
-### Priority 1 (Critical)
-- [ ] Implement BIR tax calculation tables
-- [ ] Add dynamic SSS/PhilHealth/Pag-IBIG contribution rates
-- [ ] 13th month pay automation
-
-### Priority 2 (High)
-- [ ] Biometric device integration
-- [ ] Holiday calendar management
-- [ ] Loan management system
-
-### Priority 3 (Medium)
-- [ ] Government compliance reports
-- [ ] Payroll approval workflow
-- [ ] Email notifications
-
-### Priority 4 (Low)
-- [ ] Bank integration for salary deposit
-- [ ] Mobile application
-- [ ] Advanced analytics dashboard
-
----
-
-## Testing
-
-Run the test suite:
-```bash
-./vendor/bin/sail artisan test
-```
-
-For manual testing, see [TESTING_GUIDE.md](TESTING_GUIDE.md).
-
 ---
 
 ## Support & Maintenance
@@ -344,24 +257,4 @@ AccuPay implements:
 
 This is a private payroll system. For feature requests or bug reports, contact your development team.
 
----
-
-## License
-
-Proprietary software. All rights reserved.
-
----
-
-## Contact
-
-For technical support or feature requests, refer to:
-- [SYSTEM_DOCUMENTATION.md](SYSTEM_DOCUMENTATION.md) - System capabilities
-- [WORK_SCHEDULE_GUIDE.md](WORK_SCHEDULE_GUIDE.md) - Work schedule features
-- [TESTING_GUIDE.md](TESTING_GUIDE.md) - Testing procedures
-
----
-
-**Version:** 1.0  
-**Last Updated:** November 25, 2025  
-**Built with:** Laravel + Modern Web Technologies
 

@@ -1,0 +1,88 @@
+.settings-section {
+    max-width: 900px;
+    margin: 40px auto;
+}
+
+.settings-section h2 {
+    color: #0057a0;
+    margin-bottom: 20px;
+}
+
+.settings-form {
+    background-color: #fff;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0, 87, 160, 0.15);
+    border-left: 8px solid #0057a0;
+}
+
+.settings-form label {
+    display: block;
+    margin-top: 15px;
+    font-weight: 600;
+    color: #0057a0;
+}
+
+.settings-form label i {
+    margin-right: 8px;
+    color: #00a86b;
+}
+
+.settings-form input,
+.settings-form select {
+    width: 100%;
+    padding: 12px;
+    margin-top: 8px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    background-color: #fdfdfd;
+    transition: border-color 0.3s ease;
+}
+
+.settings-form input:focus,
+.settings-form select:focus {
+    border-color: #00a86b;
+    outline: none;
+}
+
+.settings-form button {
+    margin-top: 20px;
+    background-color: #00a86b;
+    color: white;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.settings-form button i {
+    margin-right: 8px;
+}
+
+.settings-form button:hover {
+    background-color: #008f5a;
+}
+
+/* Logout at bottom of content */
+.logout-section {
+    text-align: center;
+    margin-top: 50px;
+}
+
+.logout-section .logout-btn {
+    background-color: #d9534f;
+    color: white;
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.logout-section .logout-btn:hover {
+    background-color: #c9302c;
+}

@@ -1,0 +1,92 @@
+.leave-form-container {
+  max-width: 700px;
+  margin: auto;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 87, 160, 0.15);
+  padding: 35px;
+  border-left: 8px solid #0057a0;
+}
+
+.leave-form-container h2 {
+  color: #0057a0;
+  margin-bottom: 25px;
+}
+
+.leave-form label {
+  display: block;
+  margin-top: 20px;
+  font-weight: 600;
+  color: #0057a0;
+}
+
+.leave-form label i {
+  margin-right: 8px;
+  color: #00a86b;
+}
+
+.leave-form input,
+.leave-form select,
+.leave-form textarea {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+  background-color: #fdfdfd;
+  transition: border-color 0.3s ease;
+}
+
+.leave-form input:focus,
+.leave-form select:focus,
+.leave-form textarea:focus {
+  border-color: #00a86b;
+  outline: none;
+}
+
+.form-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+.leave-form button {
+  background-color: #00a86b;
+  color: white;
+  padding: 14px 28px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.leave-form button i {
+  margin-right: 8px;
+}
+
+.leave-form button:hover {
+  background-color: #008f5a;
+}
+
+.cancel-btn {
+  background-color: #ccc;
+  color: #333;
+  padding: 14px 28px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 16px;
+  display: inline-block;
+  transition: background-color 0.3s ease;
+}
+
+.cancel-btn i {
+  margin-right: 8px;
+}
+
+.cancel-btn:hover {
+  background-color: #999;
+}

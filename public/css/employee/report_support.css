@@ -1,0 +1,83 @@
+/* Reports Page - consistent with dashboard style */
+.reports-section, .support-section {
+    max-width: 900px;
+    margin: auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0, 87, 160, 0.15);
+    padding: 30px;
+    border-left: 8px solid #0057a0;
+    margin-bottom: 30px;
+}
+
+.reports-section h2, .support-section h2 {
+    color: #0057a0;
+    margin-bottom: 20px;
+}
+
+.report-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.report-card {
+    background-color: #f4f7f9;
+    flex: 1;
+    min-width: 180px;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0,87,160,0.1);
+}
+
+.report-card i {
+    color: #0057a0;
+    margin-bottom: 10px;
+}
+
+.report-card h3 {
+    margin: 10px 0 5px 0;
+    color: #0057a0;
+    font-size: 16px;
+}
+
+.report-card p {
+    font-size: 18px;
+    font-weight: bold;
+    color: #1a1a1a;
+}
+
+/* Support Form */
+.support-form label {
+    display: block;
+    margin-top: 15px;
+    font-weight: 600;
+    color: #0057a0;
+}
+
+.support-form input,
+.support-form textarea {
+    width: 100%;
+    padding: 12px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+.support-form button {
+    background-color: #00a86b;
+    color: white;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+.support-form button:hover {
+    background-color: #008f5a;
+}

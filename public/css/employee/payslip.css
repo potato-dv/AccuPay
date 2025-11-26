@@ -1,0 +1,100 @@
+/* Payslip Page - consistent with dashboard style */
+.payslip-container {
+    max-width: 900px;
+    margin: auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0, 87, 160, 0.15);
+    padding: 35px;
+    border-left: 8px solid #0057a0;
+}
+
+.payslip-container h2 {
+    color: #0057a0;
+    margin-bottom: 25px;
+}
+
+.payslip-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 16px;
+}
+
+.payslip-table th,
+.payslip-table td {
+    padding: 14px 16px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.payslip-table th {
+    background-color: #f0f6fb;
+    color: #0057a0;
+}
+
+.payslip-table tr:hover {
+    background-color: #f9f9f9;
+}
+
+.badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+    display: inline-block;
+    text-align: center;
+}
+
+.badge.paid {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.badge.delayed {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.download-btn {
+    background-color: #00a86b;
+    color: white;
+    padding: 10px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.download-btn:hover {
+    background-color: #008f5a;
+}
+
+.payslip-details {
+    display: none;
+    background-color: #fdfdfd;
+}
+
+.details-box {
+    padding: 15px;
+    background-color: #f4f7f9;
+    border-radius: 8px;
+}
+
+/* Computation Table */
+.computation-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+}
+
+.computation-table th,
+.computation-table td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: left;
+}
+
+.computation-table th {
+    background-color: #e6f2ff;
+    color: #0057a0;
+}

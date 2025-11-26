@@ -1,0 +1,60 @@
+.leave-status-container {
+  max-width: 900px;
+  margin: auto;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 87, 160, 0.15);
+  padding: 35px;
+  border-left: 8px solid #0057a0;
+}
+
+.leave-status-container h2 {
+  color: #0057a0;
+  margin-bottom: 25px;
+}
+
+.leave-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+}
+
+.leave-table th,
+.leave-table td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.leave-table th {
+  background-color: #f0f6fb;
+  color: #0057a0;
+}
+
+.leave-table tr:hover {
+  background-color: #f9f9f9;
+}
+
+.badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 14px;
+  display: inline-block;
+  text-align: center;
+}
+
+.badge.pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.badge.approved {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.badge.rejected {
+  background-color: #f8d7da;
+  color: #721c24;
+}

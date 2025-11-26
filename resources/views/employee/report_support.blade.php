@@ -94,16 +94,135 @@
         <!-- Support Section -->
         <section class="support-section">
             <h2>Support & Feedback</h2>
+
+            @if(session('success'))
+                <div class="alert alert-success" style="background: #d4edda; border: 1px solid #c3e6cb; padding: 12px; border-radius: 4px; margin-bottom: 20px; color: #155724;">
+                    {{ session('success') }}
+                </div>
+            @endif
+
             <p>If you encounter any issues or need assistance, submit your ticket below:</p>
-            <form class="support-form">
-                <label for="issue">Issue Title</label>
-                <input type="text" id="issue" placeholder="Enter issue title">
+            <form action="{{ route('employee.support.submit') }}" method="POST" class="support-form">
+                @csrf
+                <div class="row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <label for="type">Issue Type</label>
+                        <select id="type" name="type" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">Select Type</option>
+                            <option value="technical">Technical Issue</option>
+                            <option value="payroll">Payroll Issue</option>
+                            <option value="leave">Leave Issue</option>
+                            <option value="attendance">Attendance Issue</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="priority">Priority</label>
+                        <select id="priority" name="priority" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">Select Priority</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+                </div>
                 
-                <label for="description">Description</label>
-                <textarea id="description" placeholder="Describe the issue"></textarea>
+                <label for="subject">Subject</label>
+                <input type="text" id="subject" name="subject" placeholder="Enter issue subject" required>
+                
+                <label for="message">Description</label>
+                <textarea id="message" name="message" placeholder="Describe the issue in detail" rows="5" required></textarea>
                 
                 <button type="submit"><i class="fa-solid fa-paper-plane"></i> Submit Ticket</button>
             </form>
+        </section>
+
+        <!-- Support Tickets History -->
+        <section class="reports-section">
+            <h2>My Support Tickets</h2>
+            @if($supportReports->count() > 0)
+                <div class="table-responsive" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                                <th style="padding: 12px; text-align: left;">#</th>
+                                <th style="padding: 12px; text-align: left;">Type</th>
+                                <th style="padding: 12px; text-align: left;">Subject</th>
+                                <th style="padding: 12px; text-align: left;">Priority</th>
+                                <th style="padding: 12px; text-align: left;">Status</th>
+                                <th style="padding: 12px; text-align: left;">Submitted</th>
+                                <th style="padding: 12px; text-align: left;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($supportReports as $report)
+                                <tr style="border-bottom: 1px solid #dee2e6;">
+                                    <td style="padding: 12px;">{{ $report->id }}</td>
+                                    <td style="padding: 12px;">
+                                        <span style="padding: 4px 8px; background: #6c757d; color: white; border-radius: 4px; font-size: 12px;">
+                                            {{ ucfirst($report->type) }}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 12px;">{{ Str::limit($report->subject, 40) }}</td>
+                                    <td style="padding: 12px;">
+                                        @if($report->priority == 'urgent')
+                                            <span style="padding: 4px 8px; background: #dc3545; color: white; border-radius: 4px; font-size: 12px;">Urgent</span>
+                                        @elseif($report->priority == 'high')
+                                            <span style="padding: 4px 8px; background: #ffc107; color: #000; border-radius: 4px; font-size: 12px;">High</span>
+                                        @elseif($report->priority == 'medium')
+                                            <span style="padding: 4px 8px; background: #0dcaf0; color: white; border-radius: 4px; font-size: 12px;">Medium</span>
+                                        @else
+                                            <span style="padding: 4px 8px; background: #6c757d; color: white; border-radius: 4px; font-size: 12px;">Low</span>
+                                        @endif
+                                    </td>
+                                    <td style="padding: 12px;">
+                                        @if($report->status == 'pending')
+                                            <span style="padding: 4px 8px; background: #ffc107; color: #000; border-radius: 4px; font-size: 12px;">Pending</span>
+                                        @elseif($report->status == 'in-progress')
+                                            <span style="padding: 4px 8px; background: #0d6efd; color: white; border-radius: 4px; font-size: 12px;">In Progress</span>
+                                        @elseif($report->status == 'resolved')
+                                            <span style="padding: 4px 8px; background: #198754; color: white; border-radius: 4px; font-size: 12px;">Resolved</span>
+                                        @else
+                                            <span style="padding: 4px 8px; background: #6c757d; color: white; border-radius: 4px; font-size: 12px;">Closed</span>
+                                        @endif
+                                    </td>
+                                    <td style="padding: 12px;">{{ $report->created_at->format('M d, Y') }}</td>
+                                    <td style="padding: 12px;">
+                                        <button onclick="toggleTicket('ticket-{{ $report->id }}')" style="padding: 6px 12px; background: #0d6efd; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                            View
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr id="ticket-{{ $report->id }}" style="display: none;">
+                                    <td colspan="7" style="padding: 20px; background: #f8f9fa;">
+                                        <div style="background: white; padding: 20px; border-radius: 8px;">
+                                            <h4 style="margin-top: 0;">{{ $report->subject }}</h4>
+                                            <p style="margin: 10px 0;"><strong>Message:</strong></p>
+                                            <p style="white-space: pre-wrap; background: #f8f9fa; padding: 10px; border-radius: 4px;">{{ $report->message }}</p>
+                                            
+                                            @if($report->admin_reply)
+                                                <div style="margin-top: 20px; padding: 15px; background: #d1ecf1; border-left: 4px solid #0dcaf0; border-radius: 4px;">
+                                                    <p style="margin: 0 0 5px 0;"><strong>Admin Reply:</strong> <small>({{ $report->replied_at->format('M d, Y h:i A') }})</small></p>
+                                                    <p style="white-space: pre-wrap; margin: 0;">{{ $report->admin_reply }}</p>
+                                                </div>
+                                            @else
+                                                <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                                                    <p style="margin: 0;">Waiting for admin response...</p>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div style="background: white; padding: 40px; text-align: center; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <p style="color: #6c757d; margin: 0;">No support tickets submitted yet.</p>
+                </div>
+            @endif
         </section>
     </main>
 
@@ -124,6 +243,15 @@
                 mainContent.style.marginLeft = '230px';
             }
         });
+
+        function toggleTicket(id) {
+            const element = document.getElementById(id);
+            if (element.style.display === 'none') {
+                element.style.display = 'table-row';
+            } else {
+                element.style.display = 'none';
+            }
+        }
     </script>
 </body>
 </html>

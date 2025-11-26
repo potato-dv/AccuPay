@@ -23,6 +23,7 @@
             <li><a href="{{ route('admin.payslip') }}"><i class="fa-solid fa-file-lines"></i> <span class="menu-text">Manage Payslip</span></a></li>
             <li><a href="{{ route('admin.leave') }}"><i class="fa-solid fa-calendar-check"></i> <span class="menu-text">Leave Requests</span></a></li>
             <li><a href="{{ route('admin.reports') }}"><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Reports</span></a></li>
+            <li><a href="{{ route('admin.support.reports') }}"><i class="fa-solid fa-headset"></i> <span class="menu-text">Support Tickets</span></a></li>
             <li><a href="{{ route('admin.users') }}"><i class="fa-solid fa-users-gear"></i> <span class="menu-text">User Accounts</span></a></li>
             <li><a href="{{ route('admin.settings') }}"><i class="fa-solid fa-gear"></i> <span class="menu-text">Settings</span></a></li>
         </ul>
@@ -47,6 +48,15 @@
         @if(session('error'))
             <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
                 {{ session('error') }}
+            </div>
+        @endif
+        @if ($errors->any())
+            <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                <ul style="margin: 0; padding-left: 20px;">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
             </div>
         @endif
 
@@ -123,7 +133,7 @@
                             </span>
                         </td>
                         <td>
-                            <button class="action-btn btn-theme btn-sm" onclick="editAttendance({{ $attendance->id }}, '{{ $attendance->employee_id }}', '{{ $attendance->date }}', '{{ $attendance->time_in }}', '{{ $attendance->time_out }}', '{{ $attendance->status }}', '{{ $attendance->remarks }}')">
+                            <button class="action-btn btn-theme btn-sm" onclick="editAttendance({{ $attendance->id }}, '{{ $attendance->employee_id }}', '{{ $attendance->date }}', '{{ $attendance->time_in ? date('H:i', strtotime($attendance->time_in)) : '' }}', '{{ $attendance->time_out ? date('H:i', strtotime($attendance->time_out)) : '' }}', '{{ $attendance->status }}', '{{ addslashes($attendance->remarks ?? '') }}')">
                                 <i class="fa-solid fa-pen-to-square"></i> Edit
                             </button>
                             <form action="{{ route('admin.attendance.delete', $attendance->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Delete this attendance record?');">

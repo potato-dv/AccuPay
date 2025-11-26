@@ -21,6 +21,7 @@
             <li><a href="{{ route('admin.payslip') }}"><i class="fa-solid fa-file-lines"></i> <span class="menu-text">Manage Payslip</span></a></li>
             <li><a href="{{ route('admin.leave') }}"><i class="fa-solid fa-calendar-check"></i> <span class="menu-text">Leave Requests</span></a></li>
             <li><a href="{{ route('admin.reports') }}"><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Reports</span></a></li>
+            <li><a href="{{ route('admin.support.reports') }}"><i class="fa-solid fa-headset"></i> <span class="menu-text">Support Tickets</span></a></li>
             <li><a href="{{ route('admin.users') }}"><i class="fa-solid fa-users-gear"></i> <span class="menu-text">User Accounts</span></a></li>
             <li><a href="{{ route('admin.settings') }}"><i class="fa-solid fa-gear"></i> <span class="menu-text">Settings</span></a></li>
         </ul>
@@ -35,125 +36,173 @@
     </header>
 
     <main class="main-content">
-        <div style="margin-bottom: 20px;">
-            <a href="{{ route('admin.payroll') }}" class="btn-delete" style="text-decoration: none; display: inline-block;">
-                <i class="fa-solid fa-arrow-left"></i> Back to Payroll
-            </a>
-            @if($payroll->status == 'pending')
-                <a href="{{ route('admin.payroll.edit', $payroll->id) }}" class="btn-theme" style="text-decoration: none; display: inline-block; margin-left: 10px;">
-                    <i class="fa-solid fa-edit"></i> Edit Payroll
+        <div style="max-width: 1400px; margin: 0 auto;">
+            <div style="margin-bottom: 20px;">
+                <a href="{{ route('admin.payroll') }}" class="btn-delete" style="text-decoration: none; display: inline-block;">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Payroll
                 </a>
-                <form action="{{ route('admin.payroll.approve', $payroll->id) }}" method="POST" style="display: inline; margin-left: 10px;" onsubmit="return confirm('Approve this payroll? Employees will be able to view it.');">
-                    @csrf
-                    @method('PUT')
-                    <button type="submit" class="btn-theme" style="background: #28a745;">
-                        <i class="fa-solid fa-check"></i> Approve Payroll
-                    </button>
-                </form>
-            @endif
-        </div>
+                @if($payroll->status == 'pending')
+                    <a href="{{ route('admin.payroll.edit', $payroll->id) }}" class="btn-theme" style="text-decoration: none; display: inline-block; margin-left: 10px;">
+                        <i class="fa-solid fa-edit"></i> Edit Payroll
+                    </a>
+                    <form action="{{ route('admin.payroll.approve', $payroll->id) }}" method="POST" style="display: inline; margin-left: 10px;" onsubmit="return confirm('Approve this payroll? Employees will be able to view it.');">
+                        @csrf
+                        @method('PUT')
+                        <button type="submit" class="btn-theme" style="background: #28a745;">
+                            <i class="fa-solid fa-check"></i> Approve Payroll
+                        </button>
+                    </form>
+                @endif
+            </div>
 
-        <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px;">
-            <h2 style="margin-top: 0; color: #0057a0;">{{ $payroll->payroll_period }}</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-                <div>
-                    <strong>Period:</strong><br>
-                    {{ date('M d, Y', strtotime($payroll->period_start)) }} - {{ date('M d, Y', strtotime($payroll->period_end)) }}
+            <!-- Payroll Header -->
+            <div style="background: white; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px; overflow: hidden;">
+                <div style="padding: 20px; background: #f8f9fa; border-bottom: 1px solid #ddd;">
+                    <h2 style="margin: 0 0 15px 0; color: #333; font-size: 20px;">{{ $payroll->payroll_period }}</h2>
+                    <div style="display: flex; gap: 30px; flex-wrap: wrap; font-size: 13px; color: #666;">
+                        <div><strong>Period:</strong> {{ date('M d', strtotime($payroll->period_start)) }} - {{ date('M d, Y', strtotime($payroll->period_end)) }}</div>
+                        <div><strong>Payment Date:</strong> {{ date('M d, Y', strtotime($payroll->payment_date)) }}</div>
+                        <div><strong>Total Employees:</strong> {{ $payroll->total_employees }}</div>
+                        <div><strong>Status:</strong> 
+                            <span style="padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;
+                                @if($payroll->status == 'approved') background: #d4edda; color: #155724;
+                                @elseif($payroll->status == 'pending') background: #fff3cd; color: #856404;
+                                @else background: #e2e3e5; color: #383d41; @endif">
+                                {{ ucfirst($payroll->status) }}
+                            </span>
+                        </div>
+                    </div>
+                    @if($payroll->notes)
+                        <div style="margin-top: 15px; padding: 12px; background: white; border-radius: 4px; font-size: 13px; color: #666;">
+                            <strong>Notes:</strong> {{ $payroll->notes }}
+                        </div>
+                    @endif
                 </div>
-                <div>
-                    <strong>Payment Date:</strong><br>
-                    {{ date('M d, Y', strtotime($payroll->payment_date)) }}
-                </div>
-                <div>
-                    <strong>Total Employees:</strong><br>
-                    {{ $payroll->total_employees }}
-                </div>
-                <div>
-                    <strong>Total Net Pay:</strong><br>
-                    ₱{{ number_format($payroll->total_amount, 2) }}
-                </div>
-                <div>
-                    <strong>Status:</strong><br>
-                    <span style="padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 500;
-                        @if($payroll->status == 'approved') background: #d4edda; color: #155724;
-                        @elseif($payroll->status == 'pending') background: #fff3cd; color: #856404;
-                        @else background: #e2e3e5; color: #383d41; @endif">
-                        {{ ucfirst($payroll->status) }}
-                    </span>
+
+                <!-- Summary Section -->
+                @php
+                    $totalGrossPay = $payroll->payslips->sum('gross_pay');
+                    $totalDeductions = $payroll->payslips->sum('total_deductions');
+                    $totalNetPay = $payroll->payslips->sum('net_pay');
+                    $totalPresent = $payroll->payslips->sum('days_present');
+                    $totalAbsent = $payroll->payslips->sum('days_absent');
+                    $totalLate = $payroll->payslips->sum('days_late');
+                    $totalHours = $payroll->payslips->sum('hours_worked');
+                    $totalOvertimeHours = $payroll->payslips->sum('overtime_hours');
+                @endphp
+
+                <div style="padding: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <!-- Financial Summary -->
+                        <div>
+                            <h4 style="margin: 0 0 15px 0; color: #333; font-size: 14px; border-bottom: 2px solid #0057a0; padding-bottom: 8px;">
+                                <i class="fa-solid fa-calculator"></i> Financial Summary
+                            </h4>
+                            <table style="width: 100%; font-size: 13px;">
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px 0; color: #666;">Total Gross Pay</td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: 600;">₱{{ number_format($totalGrossPay, 2) }}</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px 0; color: #666;">Total Deductions</td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #dc3545;">₱{{ number_format($totalDeductions, 2) }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 0 0 0; color: #333; font-weight: 700; font-size: 15px;">Total Net Pay</td>
+                                    <td style="padding: 10px 0 0 0; text-align: right; font-weight: 700; font-size: 15px; color: #28a745;">₱{{ number_format($totalNetPay, 2) }}</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Attendance Summary -->
+                        <div>
+                            <h4 style="margin: 0 0 15px 0; color: #333; font-size: 14px; border-bottom: 2px solid #0057a0; padding-bottom: 8px;">
+                                <i class="fa-solid fa-calendar-check"></i> Attendance Summary
+                            </h4>
+                            <table style="width: 100%; font-size: 13px;">
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px 0; color: #666;">Days Present <span style="font-size: 11px; color: #999;">(incl. late)</span></td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: 600;">{{ $totalPresent }} days</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px 0; color: #666; padding-left: 15px;">└ Days Late</td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #856404;">{{ $totalLate }} days</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px 0; color: #666;">Days Absent</td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: 600;">{{ $totalAbsent }} days</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px 0; color: #666;">Total Hours Worked</td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: 600;">{{ number_format($totalHours, 1) }} hrs</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #666;">Overtime Hours</td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: 600;">{{ number_format($totalOvertimeHours, 1) }} hrs</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Employee Payslips Table -->
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+                        <h4 style="margin: 0 0 15px 0; color: #333; font-size: 14px; border-bottom: 2px solid #0057a0; padding-bottom: 8px;">
+                            <i class="fa-solid fa-file-invoice"></i> Employee Payslips ({{ $payroll->total_employees }})
+                        </h4>
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                <thead>
+                                    <tr style="background: #f5f5f5; border-bottom: 2px solid #ddd;">
+                                        <th style="padding: 10px; text-align: left; font-weight: 600;">Employee ID</th>
+                                        <th style="padding: 10px; text-align: left; font-weight: 600;">Name</th>
+                                        <th style="padding: 10px; text-align: center; font-weight: 600;">P/A/L</th>
+                                        <th style="padding: 10px; text-align: right; font-weight: 600;">Hours</th>
+                                        <th style="padding: 10px; text-align: right; font-weight: 600;">OT</th>
+                                        <th style="padding: 10px; text-align: right; font-weight: 600;">Basic Pay</th>
+                                        <th style="padding: 10px; text-align: right; font-weight: 600;">Gross Pay</th>
+                                        <th style="padding: 10px; text-align: right; font-weight: 600;">Deductions</th>
+                                        <th style="padding: 10px; text-align: right; font-weight: 600;">Net Pay</th>
+                                        <th style="padding: 10px; text-align: center; font-weight: 600;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($payroll->payslips as $payslip)
+                                    <tr style="border-bottom: 1px solid #eee;">
+                                        <td style="padding: 10px; color: #0057a0; font-weight: 600;">{{ $payslip->employee->employee_id }}</td>
+                                        <td style="padding: 10px;">{{ $payslip->employee->full_name }}</td>
+                                        <td style="padding: 10px; text-align: center;">
+                                            <div style="display: flex; gap: 5px; justify-content: center;">
+                                                <span style="display: inline-block; padding: 3px 8px; border-radius: 4px; background: #d4edda; color: #155724; font-size: 11px; font-weight: 600;">
+                                                    {{ $payslip->days_present ?? 0 }}
+                                                </span>
+                                                <span style="display: inline-block; padding: 3px 8px; border-radius: 4px; background: #f8d7da; color: #721c24; font-size: 11px; font-weight: 600;">
+                                                    {{ $payslip->days_absent ?? 0 }}
+                                                </span>
+                                                <span style="display: inline-block; padding: 3px 8px; border-radius: 4px; background: #fff3cd; color: #856404; font-size: 11px; font-weight: 600;">
+                                                    {{ $payslip->days_late ?? 0 }}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td style="padding: 10px; text-align: right;">{{ number_format($payslip->hours_worked, 1) }}</td>
+                                        <td style="padding: 10px; text-align: right;">{{ number_format($payslip->overtime_hours, 1) }}</td>
+                                        <td style="padding: 10px; text-align: right;">₱{{ number_format($payslip->basic_salary, 2) }}</td>
+                                        <td style="padding: 10px; text-align: right; font-weight: 600;">₱{{ number_format($payslip->gross_pay, 2) }}</td>
+                                        <td style="padding: 10px; text-align: right; color: #dc3545;">₱{{ number_format($payslip->total_deductions, 2) }}</td>
+                                        <td style="padding: 10px; text-align: right; font-weight: 700; color: #28a745;">₱{{ number_format($payslip->net_pay, 2) }}</td>
+                                        <td style="padding: 10px; text-align: center;">
+                                            <a href="{{ route('admin.viewEmployeePayslip', $payslip->id) }}" style="padding: 5px 12px; background: #0057a0; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; display: inline-block;">
+                                                <i class="fa-solid fa-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
-            @if($payroll->notes)
-                <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
-                    <strong>Notes:</strong><br>
-                    {{ $payroll->notes }}
-                </div>
-            @endif
         </div>
-
-        <!-- Payroll Summary Totals -->
-        @php
-            $totalGrossPay = $payroll->payslips->sum('gross_pay');
-            $totalDeductions = $payroll->payslips->sum('total_deductions');
-            $totalNetPay = $payroll->payslips->sum('net_pay');
-        @endphp
-        <div style="background: linear-gradient(135deg, #0057a0 0%, #0080d0 100%); padding: 25px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px;">
-            <h3 style="margin: 0 0 20px 0; color: white; font-size: 20px;">
-                <i class="fa-solid fa-calculator"></i> Payroll Summary
-            </h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-                <div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 8px; backdrop-filter: blur(10px);">
-                    <div style="color: rgba(255,255,255,0.9); font-size: 13px; margin-bottom: 8px;">Total Gross Pay</div>
-                    <div style="color: white; font-size: 28px; font-weight: bold;">₱{{ number_format($totalGrossPay, 2) }}</div>
-                </div>
-                <div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 8px; backdrop-filter: blur(10px);">
-                    <div style="color: rgba(255,255,255,0.9); font-size: 13px; margin-bottom: 8px;">Total Deductions</div>
-                    <div style="color: white; font-size: 28px; font-weight: bold;">₱{{ number_format($totalDeductions, 2) }}</div>
-                </div>
-                <div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 8px; backdrop-filter: blur(10px);">
-                    <div style="color: rgba(255,255,255,0.9); font-size: 13px; margin-bottom: 8px;">Total Net Pay</div>
-                    <div style="color: white; font-size: 28px; font-weight: bold;">₱{{ number_format($totalNetPay, 2) }}</div>
-                </div>
-            </div>
-        </div>
-
-        <h3>Employee Payslips</h3>
-        <section class="employee-list">
-            <table>
-                <thead>
-                <thead>
-                    <tr style="background: #0057a0; color: white;">
-                        <th>Employee ID</th>
-                        <th>Name</th>
-                        <th>Hours</th>
-                        <th>Overtime</th>
-                        <th>Basic Salary</th>
-                        <th>Gross Pay</th>
-                        <th>Deductions</th>
-                        <th>Net Pay</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($payroll->payslips as $payslip)
-                    <tr>
-                        <td><strong>{{ $payslip->employee->employee_id }}</strong></td>
-                        <td>{{ $payslip->employee->full_name }}</td>
-                        <td>{{ $payslip->hours_worked }} hrs</td>
-                        <td>{{ $payslip->overtime_hours }} hrs</td>
-                        <td>₱{{ number_format($payslip->basic_salary, 2) }}</td>
-                        <td><strong>₱{{ number_format($payslip->gross_pay, 2) }}</strong></td>
-                        <td>₱{{ number_format($payslip->total_deductions, 2) }}</td>
-                        <td><strong style="color: #28a745;">₱{{ number_format($payslip->net_pay, 2) }}</strong></td>
-                        <td style="text-align: center;">
-                            <a href="{{ route('admin.viewEmployeePayslip', $payslip->id) }}" class="btn-sm" style="background: #17a2b8; color: white; border: none; cursor: pointer; text-decoration: none;">
-                                <i class="fa-solid fa-eye"></i> View
-                            </a>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </section>
     </main>
 
     <script>

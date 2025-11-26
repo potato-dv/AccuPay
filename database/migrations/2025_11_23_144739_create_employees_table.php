@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('department');
             $table->string('position');
             $table->date('hire_date');
-            $table->decimal('basic_salary', 10, 2);
+            $table->decimal('basic_salary', 10, 2)->nullable();
             $table->decimal('hourly_rate', 8, 2)->nullable();
             $table->string('employment_type')->default('full-time'); // full-time, part-time, contract
             $table->string('status')->default('active'); // active, on-leave, terminated

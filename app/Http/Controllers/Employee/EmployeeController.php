@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\Attendance;
 use App\Models\LeaveApplication;
 use App\Models\Payslip;
+use App\Models\SupportReport;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
@@ -180,15 +181,61 @@ class EmployeeController extends Controller
         }
         
         // Only show payslips from approved payrolls
-        $payslips = Payslip::with('payroll')
+        $payslips = Payslip::with(['payroll'])
             ->where('employee_id', $employee->id)
             ->whereHas('payroll', function($query) {
                 $query->where('status', 'approved');
             })
             ->orderBy('created_at', 'desc')
             ->get();
+        
+        // Get attendance records for each payslip including absent days
+        $attendanceByPayslip = [];
+        foreach ($payslips as $payslip) {
+            $attendanceRecords = Attendance::where('employee_id', $employee->id)
+                ->whereBetween('date', [$payslip->payroll->period_start, $payslip->payroll->period_end])
+                ->orderBy('date', 'asc')
+                ->get();
+            
+            // Index by date for easy lookup
+            $attendanceByDate = [];
+            foreach ($attendanceRecords as $record) {
+                $attendanceByDate[$record->date->format('Y-m-d')] = $record;
+            }
+            
+            // Generate all working dates in the payroll period
+            $periodStart = \Carbon\Carbon::parse($payslip->payroll->period_start);
+            $periodEnd = \Carbon\Carbon::parse($payslip->payroll->period_end);
+            $allDates = [];
+            $currentDate = $periodStart->copy();
+            
+            while ($currentDate->lte($periodEnd)) {
+                $dateStr = $currentDate->format('Y-m-d');
+                
+                // Check if employee should work on this date
+                $isWorkingDay = $employee->isScheduledToWork($dateStr);
+                
+                if ($isWorkingDay) {
+                    // Check if attendance record exists
+                    if (isset($attendanceByDate[$dateStr])) {
+                        $allDates[] = $attendanceByDate[$dateStr];
+                    } else {
+                        // Create absent record for display
+                        $absentRecord = new Attendance();
+                        $absentRecord->date = $dateStr;
+                        $absentRecord->status = 'absent';
+                        $absentRecord->hours_worked = 0;
+                        $allDates[] = $absentRecord;
+                    }
+                }
+                
+                $currentDate->addDay();
+            }
+            
+            $attendanceByPayslip[$payslip->id] = $allDates;
+        }
 
-        return view('employee.payslip', compact('employee', 'payslips'));
+        return view('employee.payslip', compact('employee', 'payslips', 'attendanceByPayslip'));
     }
 
     public function reportSupport()
@@ -234,6 +281,11 @@ class EmployeeController extends Controller
             
         $totalPayslips = Payslip::where('employee_id', $employee->id)->count();
         
+        // Support reports
+        $supportReports = SupportReport::where('employee_id', $employee->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
         return view('employee.report_support', compact(
             'employee', 
             'totalLeavesTaken', 
@@ -242,8 +294,33 @@ class EmployeeController extends Controller
             'pendingLeaves',
             'lastPayslip',
             'avgMonthlyPay',
-            'totalPayslips'
+            'totalPayslips',
+            'supportReports'
         ));
+    }
+
+    public function submitSupportReport(Request $request)
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:technical,payroll,leave,attendance,other',
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string',
+            'priority' => 'required|in:low,medium,high,urgent',
+        ]);
+
+        $user = Auth::user();
+        $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+
+        SupportReport::create([
+            'employee_id' => $employee->id,
+            'type' => $validated['type'],
+            'subject' => $validated['subject'],
+            'message' => $validated['message'],
+            'priority' => $validated['priority'],
+            'status' => 'pending',
+        ]);
+
+        return redirect()->route('employee.report')->with('success', 'Support report submitted successfully!');
     }
 
     public function settings()

@@ -22,6 +22,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/employee/leave/status', [EmployeeController::class, 'leaveStatus'])->name('employee.leave.status');
     Route::get('/employee/payslip', [EmployeeController::class, 'payslip'])->name('employee.payslip');
     Route::get('/employee/report-support', [EmployeeController::class, 'reportSupport'])->name('employee.report');
+    Route::post('/employee/support/submit', [EmployeeController::class, 'submitSupportReport'])->name('employee.support.submit');
     Route::get('/employee/settings', [EmployeeController::class, 'settings'])->name('employee.settings');
     Route::put('/employee/settings/password', [EmployeeController::class, 'updatePassword'])->name('employee.password.update');
     
@@ -62,6 +63,9 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/admin/leave-applications/reject/{id}', [AdminController::class, 'rejectLeave'])->name('admin.leave.reject');
     
     Route::get('/admin/reports', [AdminController::class, 'manageReports'])->name('admin.reports');
+    Route::get('/admin/support-reports', [AdminController::class, 'manageSupportReports'])->name('admin.support.reports');
+    Route::post('/admin/support-reports/reply/{id}', [AdminController::class, 'replySupportReport'])->name('admin.support.reply');
+    Route::put('/admin/support-reports/status/{id}', [AdminController::class, 'updateSupportStatus'])->name('admin.support.status');
     
     // User Accounts
     Route::get('/admin/user-accounts', [AdminController::class, 'userAccounts'])->name('admin.users');

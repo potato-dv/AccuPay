@@ -10,7 +10,9 @@ use App\Models\Payroll;
 use App\Models\LeaveApplication;
 use App\Models\Payslip;
 use App\Models\User;
+use App\Models\SupportReport;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 class AdminController extends Controller
 {
@@ -329,14 +331,35 @@ class AdminController extends Controller
 
         // Generate payslips for each employee
         foreach ($employees as $employee) {
-            // Get attendance for this period
+            // Get all attendance records for this period
             $attendances = Attendance::where('employee_id', $employee->id)
                 ->whereBetween('date', [$validated['period_start'], $validated['period_end']])
-                ->where('status', 'present')
                 ->get();
 
-            $hoursWorked = $attendances->sum('hours_worked') ?? 0;
-            $overtimeHours = $attendances->sum('overtime_hours') ?? 0;
+            // Calculate working days in period based on employee's work schedule
+            $periodStart = \Carbon\Carbon::parse($validated['period_start']);
+            $periodEnd = \Carbon\Carbon::parse($validated['period_end']);
+            $totalWorkingDays = 0;
+            $currentDate = $periodStart->copy();
+            
+            while ($currentDate->lte($periodEnd)) {
+                if ($employee->isScheduledToWork($currentDate->format('Y-m-d'))) {
+                    $totalWorkingDays++;
+                }
+                $currentDate->addDay();
+            }
+
+            // Count attendance by status
+            // Note: "late" employees are still present, so days_present includes both present and late
+            $daysPresent = $attendances->whereIn('status', ['present', 'late'])->count();
+            $daysLate = $attendances->where('status', 'late')->count();
+            $daysOnLeave = $attendances->where('status', 'on-leave')->count();
+            $daysAbsent = max(0, $totalWorkingDays - $daysPresent - $daysOnLeave);
+
+            // Get hours worked and overtime from present/late attendance
+            $presentAttendances = $attendances->whereIn('status', ['present', 'late']);
+            $hoursWorked = $presentAttendances->sum('hours_worked') ?? 0;
+            $overtimeHours = $presentAttendances->sum('overtime_hours') ?? 0;
 
             // Get employee's work schedule for overtime rate
             $overtimeRate = 1.25; // Default overtime rate
@@ -403,6 +426,9 @@ class AdminController extends Controller
                 'net_pay' => $netPay,
                 'hours_worked' => $hoursWorked,
                 'overtime_hours' => $overtimeHours,
+                'days_present' => $daysPresent,
+                'days_absent' => $daysAbsent,
+                'days_late' => $daysLate,
             ]);
 
             $totalAmount += $netPay;
@@ -559,7 +585,54 @@ class AdminController extends Controller
     public function viewEmployeePayslip($id)
     {
         $payslip = Payslip::with(['employee', 'payroll'])->findOrFail($id);
-        return view('admin.view_employee_payslip', compact('payslip'));
+        
+        // Get detailed attendance records for this payroll period
+        $attendanceRecords = Attendance::where('employee_id', $payslip->employee_id)
+            ->whereBetween('date', [$payslip->payroll->period_start, $payslip->payroll->period_end])
+            ->orderBy('date', 'asc')
+            ->get();
+        
+        // Index by date for easy lookup
+        $attendanceByDate = [];
+        foreach ($attendanceRecords as $record) {
+            $attendanceByDate[$record->date->format('Y-m-d')] = $record;
+        }
+        
+        // Generate all dates in the payroll period
+        $periodStart = \Carbon\Carbon::parse($payslip->payroll->period_start);
+        $periodEnd = \Carbon\Carbon::parse($payslip->payroll->period_end);
+        $allDates = [];
+        $currentDate = $periodStart->copy();
+        
+        while ($currentDate->lte($periodEnd)) {
+            $dateStr = $currentDate->format('Y-m-d');
+            
+            // Check if employee should work on this date
+            $isWorkingDay = $payslip->employee->isScheduledToWork($dateStr);
+            
+            if ($isWorkingDay) {
+                // Check if attendance record exists
+                if (isset($attendanceByDate[$dateStr])) {
+                    // Use actual attendance record
+                    $allDates[] = $attendanceByDate[$dateStr];
+                } else {
+                    // Create absent record for display (no attendance logged)
+                    $absentRecord = new \App\Models\Attendance();
+                    $absentRecord->date = $dateStr;
+                    $absentRecord->status = 'absent';
+                    $absentRecord->hours_worked = 0;
+                    $absentRecord->overtime_hours = 0;
+                    $absentRecord->time_in = null;
+                    $absentRecord->time_out = null;
+                    $absentRecord->remarks = 'No attendance record';
+                    $allDates[] = $absentRecord;
+                }
+            }
+            
+            $currentDate->addDay();
+        }
+        
+        return view('admin.view_employee_payslip', compact('payslip', 'allDates'));
     }
 
     public function deletePayroll($id)
@@ -573,7 +646,7 @@ class AdminController extends Controller
 
     public function managePayslip(Request $request)
     {
-        $query = Payslip::with(['employee', 'payroll'])
+        $query = Payslip::with(['employee', 'payroll', 'employee.attendance'])
             ->whereHas('payroll', function($q) {
                 $q->where('status', 'approved');
             })
@@ -641,11 +714,11 @@ class AdminController extends Controller
 
     public function manageReports(Request $request)
     {
-        // Get filter parameters
         $reportType = $request->get('report_type');
-        $dateFrom = $request->get('date_from');
-        $dateTo = $request->get('date_to');
+        $dateFrom = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
+        $dateTo = $request->get('date_to', now()->endOfMonth()->format('Y-m-d'));
         $employeeId = $request->get('employee_id');
+        $exportFormat = $request->get('export');
 
         // Summary Statistics
         $totalEmployees = Employee::count();
@@ -653,10 +726,10 @@ class AdminController extends Controller
         $totalAttendance = Attendance::count();
         $totalLeaves = LeaveApplication::count();
 
-        // Build query for detailed report data based on type
-        $reportData = [];
+        $reportData = collect();
+        $summary = [];
         
-        if ($reportType === 'payroll') {
+        if ($reportType === 'payroll' || $reportType === 'payroll_detailed') {
             $query = Payslip::with(['employee', 'payroll']);
             
             if ($dateFrom && $dateTo) {
@@ -669,7 +742,133 @@ class AdminController extends Controller
                 $query->where('employee_id', $employeeId);
             }
             
+            if ($exportFormat) {
+                $reportData = $query->latest()->get();
+                $summary = [
+                    'total_gross' => $reportData->sum('gross_pay'),
+                    'total_deductions' => $reportData->sum('total_deductions'),
+                    'total_net' => $reportData->sum('net_pay'),
+                    'count' => $reportData->count()
+                ];
+                return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
+            }
+            
             $reportData = $query->latest()->paginate(20);
+            
+        } elseif ($reportType === 'deductions') {
+            $query = Payslip::with(['employee', 'payroll'])
+                ->where(function($q) {
+                    $q->where('sss', '>', 0)
+                      ->orWhere('philhealth', '>', 0)
+                      ->orWhere('pagibig', '>', 0)
+                      ->orWhere('tax', '>', 0);
+                });
+            
+            if ($dateFrom && $dateTo) {
+                $query->whereHas('payroll', function($q) use ($dateFrom, $dateTo) {
+                    $q->whereBetween('period_start', [$dateFrom, $dateTo]);
+                });
+            }
+            
+            if ($employeeId) {
+                $query->where('employee_id', $employeeId);
+            }
+            
+            if ($exportFormat) {
+                $reportData = $query->latest()->get();
+                $summary = [
+                    'total_sss' => $reportData->sum('sss'),
+                    'total_philhealth' => $reportData->sum('philhealth'),
+                    'total_pagibig' => $reportData->sum('pagibig'),
+                    'total_tax' => $reportData->sum('tax'),
+                    'total_deductions' => $reportData->sum('total_deductions'),
+                    'count' => $reportData->count()
+                ];
+                return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
+            }
+            
+            $reportData = $query->latest()->paginate(20);
+            
+        } elseif ($reportType === 'overtime') {
+            $query = Attendance::with('employee')->where('overtime_hours', '>', 0);
+            
+            if ($dateFrom && $dateTo) {
+                $query->whereBetween('date', [$dateFrom, $dateTo]);
+            }
+            
+            if ($employeeId) {
+                $query->where('employee_id', $employeeId);
+            }
+            
+            if ($exportFormat) {
+                $reportData = $query->latest('date')->get();
+                $summary = [
+                    'total_records' => $reportData->count(),
+                    'total_overtime' => $reportData->sum('overtime_hours')
+                ];
+                return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
+            }
+            
+            $reportData = $query->latest('date')->paginate(20);
+            
+        } elseif ($reportType === 'leave_balance') {
+            $query = Employee::query();
+            
+            if ($employeeId) {
+                $query->where('id', $employeeId);
+            }
+            
+            if ($exportFormat) {
+                $reportData = $query->get();
+                $reportData = $reportData->map(function($emp) use ($dateFrom, $dateTo) {
+                    $year = $dateTo ? \Carbon\Carbon::parse($dateTo)->year : now()->year;
+                    $totalLeave = 12; // Standard annual leave
+                    $usedLeave = LeaveApplication::where('employee_id', $emp->id)
+                        ->where('status', 'approved')
+                        ->whereYear('start_date', $year)
+                        ->sum('days_count');
+                    $emp->total_leave = $totalLeave;
+                    $emp->used_leave = $usedLeave;
+                    $emp->remaining_leave = $totalLeave - $usedLeave;
+                    return $emp;
+                });
+                $summary = [
+                    'total_employees' => $reportData->count()
+                ];
+                return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
+            }
+            
+            $reportData = $query->paginate(20);
+            $reportData->getCollection()->transform(function($emp) use ($dateFrom, $dateTo) {
+                $year = $dateTo ? \Carbon\Carbon::parse($dateTo)->year : now()->year;
+                $totalLeave = 12;
+                $usedLeave = LeaveApplication::where('employee_id', $emp->id)
+                    ->where('status', 'approved')
+                    ->whereYear('start_date', $year)
+                    ->sum('days_count');
+                $emp->total_leave = $totalLeave;
+                $emp->used_leave = $usedLeave;
+                $emp->remaining_leave = $totalLeave - $usedLeave;
+                return $emp;
+            });
+            
+        } elseif ($reportType === 'employee_compensation') {
+            $query = Employee::query();
+            
+            if ($employeeId) {
+                $query->where('id', $employeeId);
+            }
+            
+            if ($exportFormat) {
+                $reportData = $query->get();
+                $summary = [
+                    'total_employees' => $reportData->count(),
+                    'avg_salary' => $reportData->avg('basic_salary')
+                ];
+                return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
+            }
+            
+            $reportData = $query->paginate(20);
             
         } elseif ($reportType === 'attendance') {
             $query = Attendance::with('employee');
@@ -680,6 +879,19 @@ class AdminController extends Controller
             
             if ($employeeId) {
                 $query->where('employee_id', $employeeId);
+            }
+            
+            if ($exportFormat) {
+                $reportData = $query->latest('date')->get();
+                $summary = [
+                    'total_records' => $reportData->count(),
+                    'present' => $reportData->where('status', 'present')->count(),
+                    'late' => $reportData->where('status', 'late')->count(),
+                    'absent' => $reportData->where('status', 'absent')->count(),
+                    'total_hours' => $reportData->sum('hours_worked'),
+                    'total_overtime' => $reportData->sum('overtime_hours')
+                ];
+                return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
             }
             
             $reportData = $query->latest('date')->paginate(20);
@@ -695,6 +907,18 @@ class AdminController extends Controller
                 $query->where('employee_id', $employeeId);
             }
             
+            if ($exportFormat) {
+                $reportData = $query->latest()->get();
+                $summary = [
+                    'total_applications' => $reportData->count(),
+                    'approved' => $reportData->where('status', 'approved')->count(),
+                    'pending' => $reportData->where('status', 'pending')->count(),
+                    'rejected' => $reportData->where('status', 'rejected')->count(),
+                    'total_days' => $reportData->sum('days_count')
+                ];
+                return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
+            }
+            
             $reportData = $query->latest()->paginate(20);
             
         } elseif ($reportType === 'employee') {
@@ -702,6 +926,18 @@ class AdminController extends Controller
             
             if ($employeeId) {
                 $query->where('id', $employeeId);
+            }
+            
+            if ($exportFormat) {
+                $reportData = $query->get();
+                $summary = [
+                    'total_employees' => $reportData->count(),
+                    'active' => $reportData->where('status', 'active')->count(),
+                    'inactive' => $reportData->where('status', 'inactive')->count(),
+                    'full_time' => $reportData->where('employment_type', 'full-time')->count(),
+                    'part_time' => $reportData->where('employment_type', 'part-time')->count()
+                ];
+                return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
             }
             
             $reportData = $query->paginate(20);
@@ -721,6 +957,233 @@ class AdminController extends Controller
             'dateTo',
             'employeeId'
         ));
+    }
+
+    private function exportReport($type, $data, $summary, $format, $dateFrom, $dateTo)
+    {
+        $filename = "{$type}_report_" . now()->format('Y-m-d_His');
+        
+        if ($format === 'csv') {
+            return $this->exportCSV($type, $data, $summary, $filename, $dateFrom, $dateTo);
+        }
+        
+        return redirect()->back()->with('error', 'Invalid export format');
+    }
+
+    private function exportCSV($type, $data, $summary, $filename, $dateFrom, $dateTo)
+    {
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}.csv\"",
+        ];
+
+        $callback = function() use ($type, $data, $summary, $dateFrom, $dateTo) {
+            $file = fopen('php://output', 'w');
+            
+            // Add report header
+            fputcsv($file, ['ACCUPAY INC. - ' . strtoupper($type) . ' REPORT']);
+            fputcsv($file, ['Period: ' . $dateFrom . ' to ' . $dateTo]);
+            fputcsv($file, ['Generated: ' . now()->format('F d, Y h:i A')]);
+            fputcsv($file, []);
+            
+            if ($type === 'payroll') {
+                fputcsv($file, ['Employee ID', 'Employee Name', 'Payroll Period', 'Period Start', 'Period End', 'Basic Salary', 'Gross Pay', 'Deductions', 'Net Pay']);
+                foreach ($data as $row) {
+                    fputcsv($file, [
+                        $row->employee->employee_id,
+                        $row->employee->full_name,
+                        $row->payroll->payroll_period,
+                        $row->payroll->period_start->format('M d, Y'),
+                        $row->payroll->period_end->format('M d, Y'),
+                        number_format($row->basic_salary, 2),
+                        number_format($row->gross_pay, 2),
+                        number_format($row->total_deductions, 2),
+                        number_format($row->net_pay, 2)
+                    ]);
+                }
+                fputcsv($file, []);
+                fputcsv($file, ['SUMMARY']);
+                fputcsv($file, ['Total Records', $summary['count']]);
+                fputcsv($file, ['Total Gross Pay', number_format($summary['total_gross'], 2)]);
+                fputcsv($file, ['Total Deductions', number_format($summary['total_deductions'], 2)]);
+                fputcsv($file, ['Total Net Pay', number_format($summary['total_net'], 2)]);
+                
+            } elseif ($type === 'payroll_detailed') {
+                fputcsv($file, ['Employee ID', 'Employee Name', 'Payroll Period', 'Period Start', 'Period End', 'Basic Salary', 'Allowances', 'Overtime Pay', 'Gross Pay', 'Deductions', 'Net Pay']);
+                foreach ($data as $row) {
+                    fputcsv($file, [
+                        $row->employee->employee_id,
+                        $row->employee->full_name,
+                        $row->payroll->payroll_period,
+                        $row->payroll->period_start->format('M d, Y'),
+                        $row->payroll->period_end->format('M d, Y'),
+                        number_format($row->basic_salary, 2),
+                        number_format($row->allowances, 2),
+                        number_format($row->overtime_pay, 2),
+                        number_format($row->gross_pay, 2),
+                        number_format($row->total_deductions, 2),
+                        number_format($row->net_pay, 2)
+                    ]);
+                }
+                fputcsv($file, []);
+                fputcsv($file, ['SUMMARY']);
+                fputcsv($file, ['Total Records', $summary['count']]);
+                fputcsv($file, ['Total Gross Pay', number_format($summary['total_gross'], 2)]);
+                fputcsv($file, ['Total Deductions', number_format($summary['total_deductions'], 2)]);
+                fputcsv($file, ['Total Net Pay', number_format($summary['total_net'], 2)]);
+                
+            } elseif ($type === 'deductions') {
+                fputcsv($file, ['Employee ID', 'Employee Name', 'Payroll Period', 'SSS', 'PhilHealth', 'Pag-IBIG', 'Tax', 'Other Deductions', 'Total Deductions']);
+                foreach ($data as $row) {
+                    fputcsv($file, [
+                        $row->employee->employee_id,
+                        $row->employee->full_name,
+                        $row->payroll->payroll_period,
+                        number_format($row->sss, 2),
+                        number_format($row->philhealth, 2),
+                        number_format($row->pagibig, 2),
+                        number_format($row->tax, 2),
+                        number_format($row->other_deductions, 2),
+                        number_format($row->total_deductions, 2)
+                    ]);
+                }
+                fputcsv($file, []);
+                fputcsv($file, ['SUMMARY']);
+                fputcsv($file, ['Total Records', $summary['count']]);
+                fputcsv($file, ['Total SSS', number_format($summary['total_sss'], 2)]);
+                fputcsv($file, ['Total PhilHealth', number_format($summary['total_philhealth'], 2)]);
+                fputcsv($file, ['Total Pag-IBIG', number_format($summary['total_pagibig'], 2)]);
+                fputcsv($file, ['Total Tax', number_format($summary['total_tax'], 2)]);
+                fputcsv($file, ['Total Deductions', number_format($summary['total_deductions'], 2)]);
+                
+            } elseif ($type === 'overtime') {
+                fputcsv($file, ['Employee ID', 'Employee Name', 'Date', 'Time In', 'Time Out', 'Regular Hours', 'Overtime Hours', 'Status']);
+                foreach ($data as $row) {
+                    fputcsv($file, [
+                        $row->employee->employee_id,
+                        $row->employee->full_name,
+                        $row->date->format('M d, Y'),
+                        $row->time_in ? \Carbon\Carbon::parse($row->time_in)->format('h:i A') : '-',
+                        $row->time_out ? \Carbon\Carbon::parse($row->time_out)->format('h:i A') : '-',
+                        number_format($row->hours_worked, 2),
+                        number_format($row->overtime_hours, 2),
+                        ucfirst($row->status)
+                    ]);
+                }
+                fputcsv($file, []);
+                fputcsv($file, ['SUMMARY']);
+                fputcsv($file, ['Total Records', $summary['total_records']]);
+                fputcsv($file, ['Total Overtime Hours', number_format($summary['total_overtime'], 2)]);
+                
+            } elseif ($type === 'leave_balance') {
+                fputcsv($file, ['Employee ID', 'Employee Name', 'Department', 'Position', 'Total Leave Credits', 'Used Leave', 'Remaining Leave']);
+                foreach ($data as $row) {
+                    fputcsv($file, [
+                        $row->employee_id,
+                        $row->full_name,
+                        $row->department,
+                        $row->position,
+                        $row->total_leave ?? 12,
+                        $row->used_leave ?? 0,
+                        $row->remaining_leave ?? 12
+                    ]);
+                }
+                fputcsv($file, []);
+                fputcsv($file, ['SUMMARY']);
+                fputcsv($file, ['Total Employees', $summary['total_employees']]);
+                
+            } elseif ($type === 'employee_compensation') {
+                fputcsv($file, ['Employee ID', 'Name', 'Position', 'Department', 'Employment Type', 'Basic Salary', 'Hourly Rate', 'Status']);
+                foreach ($data as $row) {
+                    fputcsv($file, [
+                        $row->employee_id,
+                        $row->full_name,
+                        $row->position,
+                        $row->department,
+                        ucfirst($row->employment_type),
+                        number_format($row->basic_salary ?? 0, 2),
+                        number_format($row->hourly_rate ?? 0, 2),
+                        ucfirst($row->status)
+                    ]);
+                }
+                fputcsv($file, []);
+                fputcsv($file, ['SUMMARY']);
+                fputcsv($file, ['Total Employees', $summary['total_employees']]);
+                fputcsv($file, ['Average Salary', number_format($summary['avg_salary'] ?? 0, 2)]);
+                
+            } elseif ($type === 'attendance') {
+                fputcsv($file, ['Employee ID', 'Employee Name', 'Date', 'Time In', 'Time Out', 'Hours Worked', 'Overtime Hours', 'Status']);
+                foreach ($data as $row) {
+                    fputcsv($file, [
+                        $row->employee->employee_id,
+                        $row->employee->full_name,
+                        $row->date->format('M d, Y'),
+                        $row->time_in ? \Carbon\Carbon::parse($row->time_in)->format('h:i A') : '-',
+                        $row->time_out ? \Carbon\Carbon::parse($row->time_out)->format('h:i A') : '-',
+                        number_format($row->hours_worked, 2),
+                        number_format($row->overtime_hours, 2),
+                        ucfirst($row->status)
+                    ]);
+                }
+                fputcsv($file, []);
+                fputcsv($file, ['SUMMARY']);
+                fputcsv($file, ['Total Records', $summary['total_records']]);
+                fputcsv($file, ['Present', $summary['present']]);
+                fputcsv($file, ['Late', $summary['late']]);
+                fputcsv($file, ['Absent', $summary['absent']]);
+                fputcsv($file, ['Total Hours Worked', number_format($summary['total_hours'], 2)]);
+                fputcsv($file, ['Total Overtime Hours', number_format($summary['total_overtime'], 2)]);
+                
+            } elseif ($type === 'leave') {
+                fputcsv($file, ['Employee ID', 'Employee Name', 'Leave Type', 'Start Date', 'End Date', 'Days', 'Reason', 'Status']);
+                foreach ($data as $row) {
+                    fputcsv($file, [
+                        $row->employee->employee_id,
+                        $row->employee->full_name,
+                        ucfirst($row->leave_type),
+                        $row->start_date->format('M d, Y'),
+                        $row->end_date->format('M d, Y'),
+                        $row->days_count,
+                        $row->reason,
+                        ucfirst($row->status)
+                    ]);
+                }
+                fputcsv($file, []);
+                fputcsv($file, ['SUMMARY']);
+                fputcsv($file, ['Total Applications', $summary['total_applications']]);
+                fputcsv($file, ['Approved', $summary['approved']]);
+                fputcsv($file, ['Pending', $summary['pending']]);
+                fputcsv($file, ['Rejected', $summary['rejected']]);
+                fputcsv($file, ['Total Leave Days', $summary['total_days']]);
+                
+            } elseif ($type === 'employee') {
+                fputcsv($file, ['Employee ID', 'Name', 'Position', 'Department', 'Employment Type', 'Contact', 'Email', 'Status', 'Hire Date']);
+                foreach ($data as $row) {
+                    fputcsv($file, [
+                        $row->employee_id,
+                        $row->full_name,
+                        $row->position,
+                        $row->department,
+                        ucfirst($row->employment_type),
+                        $row->phone,
+                        $row->email,
+                        ucfirst($row->status),
+                        $row->hire_date->format('M d, Y')
+                    ]);
+                }
+                fputcsv($file, []);
+                fputcsv($file, ['SUMMARY']);
+                fputcsv($file, ['Total Employees', $summary['total_employees']]);
+                fputcsv($file, ['Active', $summary['active']]);
+                fputcsv($file, ['Inactive', $summary['inactive']]);
+                fputcsv($file, ['Full-time', $summary['full_time']]);
+                fputcsv($file, ['Part-time', $summary['part_time']]);
+            }
+            
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     public function userAccounts()
@@ -784,6 +1247,70 @@ class AdminController extends Controller
         $user->update(['password' => Hash::make($employee->employee_id)]);
 
         return back()->with('success', 'Password reset successfully! New password is: ' . $employee->employee_id);
+    }
+
+    public function manageSupportReports(Request $request)
+    {
+        $query = SupportReport::with(['employee', 'repliedBy'])->orderBy('created_at', 'desc');
+
+        // Filter by status
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        // Filter by type
+        if ($request->type) {
+            $query->where('type', $request->type);
+        }
+
+        // Filter by priority
+        if ($request->priority) {
+            $query->where('priority', $request->priority);
+        }
+
+        // Search by subject or employee name
+        if ($request->search) {
+            $query->where(function($q) use ($request) {
+                $q->where('subject', 'like', '%' . $request->search . '%')
+                  ->orWhereHas('employee', function($eq) use ($request) {
+                      $eq->where('full_name', 'like', '%' . $request->search . '%');
+                  });
+            });
+        }
+
+        $reports = $query->paginate(20);
+
+        return view('admin.support_reports', compact('reports'));
+    }
+
+    public function replySupportReport(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'admin_reply' => 'required|string',
+        ]);
+
+        $report = SupportReport::findOrFail($id);
+        
+        $report->update([
+            'admin_reply' => $validated['admin_reply'],
+            'replied_by' => Auth::id(),
+            'replied_at' => now(),
+            'status' => 'in-progress',
+        ]);
+
+        return redirect()->back()->with('success', 'Reply sent successfully!');
+    }
+
+    public function updateSupportStatus(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:pending,in-progress,resolved,closed',
+        ]);
+
+        $report = SupportReport::findOrFail($id);
+        $report->update(['status' => $validated['status']]);
+
+        return redirect()->back()->with('success', 'Status updated successfully!');
     }
 
     public function settings()

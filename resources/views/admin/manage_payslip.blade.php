@@ -22,6 +22,7 @@
             <li class="active"><a href="{{ route('admin.payslip') }}"><i class="fa-solid fa-file-lines"></i> <span class="menu-text">Manage Payslip</span></a></li>
             <li><a href="{{ route('admin.leave') }}"><i class="fa-solid fa-calendar-check"></i> <span class="menu-text">Leave Requests</span></a></li>
             <li><a href="{{ route('admin.reports') }}"><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Reports</span></a></li>
+            <li><a href="{{ route('admin.support.reports') }}"><i class="fa-solid fa-headset"></i> <span class="menu-text">Support Tickets</span></a></li>
             <li><a href="{{ route('admin.users') }}"><i class="fa-solid fa-users-gear"></i> <span class="menu-text">User Accounts</span></a></li>
             <li><a href="{{ route('admin.settings') }}"><i class="fa-solid fa-gear"></i> <span class="menu-text">Settings</span></a></li>
         </ul>
@@ -66,9 +67,9 @@
                         <th>Employee Name</th>
                         <th>Department</th>
                         <th>Payroll Period</th>
+                        <th>P/A/L</th>
                         <th>Hours</th>
                         <th>Gross Pay</th>
-                        <th>Deductions</th>
                         <th>Net Pay</th>
                         <th>Actions</th>
                     </tr>
@@ -80,31 +81,18 @@
                         <td>{{ $payslip->employee->full_name }}</td>
                         <td>{{ $payslip->employee->department }}</td>
                         <td>{{ $payslip->payroll->payroll_period }}</td>
-                        <td>{{ $payslip->hours_worked }} hrs</td>
+                        <td>
+                            <span style="color: #28a745; font-weight: bold;">{{ $payslip->days_present ?? 0 }}</span> / 
+                            <span style="color: #dc3545; font-weight: bold;">{{ $payslip->days_absent ?? 0 }}</span> / 
+                            <span style="color: #ffc107; font-weight: bold;">{{ $payslip->days_late ?? 0 }}</span>
+                        </td>
+                        <td>{{ number_format($payslip->hours_worked, 1) }} hrs</td>
                         <td>₱{{ number_format($payslip->gross_pay, 2) }}</td>
-                        <td>₱{{ number_format($payslip->total_deductions, 2) }}</td>
                         <td><strong>₱{{ number_format($payslip->net_pay, 2) }}</strong></td>
                         <td>
-                            <button type="button" class="action-btn btn-theme btn-sm" onclick="viewPayslip(
-                                '{{ $payslip->employee->employee_id }}',
-                                '{{ $payslip->employee->full_name }}',
-                                '{{ $payslip->employee->department }}',
-                                '{{ $payslip->employee->position }}',
-                                '{{ $payslip->payroll->payroll_period }}',
-                                '{{ $payslip->hours_worked }}',
-                                '{{ $payslip->overtime_hours }}',
-                                '{{ number_format($payslip->basic_salary, 2) }}',
-                                '{{ number_format($payslip->overtime_pay, 2) }}',
-                                '{{ number_format($payslip->gross_pay, 2) }}',
-                                '{{ number_format($payslip->sss, 2) }}',
-                                '{{ number_format($payslip->philhealth, 2) }}',
-                                '{{ number_format($payslip->pagibig, 2) }}',
-                                '{{ number_format($payslip->tax, 2) }}',
-                                '{{ number_format($payslip->total_deductions, 2) }}',
-                                '{{ number_format($payslip->net_pay, 2) }}'
-                            )">
+                            <a href="{{ route('admin.viewEmployeePayslip', $payslip->id) }}" class="action-btn btn-theme btn-sm" style="text-decoration: none; display: inline-block;">
                                 <i class="fa-solid fa-eye"></i> View Details
-                            </button>
+                            </a>
                         </td>
                     </tr>
                     @empty
@@ -151,13 +139,35 @@
                 </div>
             </div>
 
+            <div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 10px 0; color: #0057a0;"><i class="fa-solid fa-calendar-check"></i> Attendance Summary</h4>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                    <div style="text-align: center; background: white; padding: 10px; border-radius: 6px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #28a745;"><span id="viewPresent"></span></div>
+                        <div style="font-size: 12px; color: #666;">Days Present</div>
+                    </div>
+                    <div style="text-align: center; background: white; padding: 10px; border-radius: 6px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #dc3545;"><span id="viewAbsent"></span></div>
+                        <div style="font-size: 12px; color: #666;">Days Absent</div>
+                    </div>
+                    <div style="text-align: center; background: white; padding: 10px; border-radius: 6px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #ffc107;"><span id="viewLate"></span></div>
+                        <div style="font-size: 12px; color: #666;">Days Late</div>
+                    </div>
+                    <div style="text-align: center; background: white; padding: 10px; border-radius: 6px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #0057a0;"><span id="viewHours"></span></div>
+                        <div style="font-size: 12px; color: #666;">Total Hours</div>
+                    </div>
+                </div>
+            </div>
+
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                 <tr style="background: #0057a0; color: white;">
                     <td colspan="2" style="padding: 10px; font-weight: bold;">EARNINGS</td>
                 </tr>
                 <tr>
                     <td style="padding: 8px; border-bottom: 1px solid #ddd;">Hours Worked</td>
-                    <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;"><span id="viewHours"></span> hrs</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;"><span id="viewHoursDetail"></span> hrs</td>
                 </tr>
                 <tr>
                     <td style="padding: 8px; border-bottom: 1px solid #ddd;">Overtime Hours</td>
@@ -229,13 +239,17 @@
             }
         });
 
-        function viewPayslip(empId, name, dept, pos, period, hours, ot, basic, otPay, gross, sss, phil, pagibig, tax, totalDed, net) {
+        function viewPayslip(empId, name, dept, pos, period, present, absent, late, hours, ot, basic, otPay, gross, sss, phil, pagibig, tax, totalDed, net) {
             document.getElementById('viewEmpId').textContent = empId;
             document.getElementById('viewName').textContent = name;
             document.getElementById('viewDept').textContent = dept;
             document.getElementById('viewPos').textContent = pos;
             document.getElementById('viewPeriod').textContent = period;
-            document.getElementById('viewHours').textContent = hours;
+            document.getElementById('viewPresent').textContent = present;
+            document.getElementById('viewAbsent').textContent = absent;
+            document.getElementById('viewLate').textContent = late;
+            document.getElementById('viewHours').textContent = parseFloat(hours).toFixed(1);
+            document.getElementById('viewHoursDetail').textContent = hours;
             document.getElementById('viewOT').textContent = ot;
             document.getElementById('viewBasic').textContent = basic;
             document.getElementById('viewOTPay').textContent = otPay;

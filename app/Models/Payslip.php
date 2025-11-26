@@ -9,7 +9,8 @@ class Payslip extends Model
     protected $fillable = [
         'payroll_id', 'employee_id', 'basic_salary', 'overtime_pay', 'allowances',
         'bonuses', 'gross_pay', 'tax', 'sss', 'philhealth', 'pagibig',
-        'other_deductions', 'total_deductions', 'net_pay', 'hours_worked', 'overtime_hours'
+        'other_deductions', 'total_deductions', 'net_pay', 'hours_worked', 'overtime_hours',
+        'days_present', 'days_absent', 'days_late'
     ];
 
     protected $casts = [

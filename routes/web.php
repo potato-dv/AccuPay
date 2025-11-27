@@ -26,6 +26,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/employee/settings', [EmployeeController::class, 'settings'])->name('employee.settings');
     Route::put('/employee/settings/password', [EmployeeController::class, 'updatePassword'])->name('employee.password.update');
     
+    // Employee Loan Routes
+    Route::get('/employee/loans', [EmployeeController::class, 'loans'])->name('employee.loans');
+    Route::post('/employee/loans/store', [EmployeeController::class, 'storeLoan'])->name('employee.loans.store');
+    
     // Admin Routes
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
     
@@ -72,6 +76,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/user-accounts/create/{employeeId}', [AdminController::class, 'createUserAccount'])->name('admin.users.create');
     Route::delete('/admin/user-accounts/delete/{employeeId}', [AdminController::class, 'deleteUserAccount'])->name('admin.users.delete');
     Route::post('/admin/user-accounts/reset-password/{employeeId}', [AdminController::class, 'resetUserPassword'])->name('admin.users.resetPassword');
+    
+    // Loan Management Routes
+    Route::get('/admin/loans', [AdminController::class, 'manageLoans'])->name('admin.loans');
+    Route::post('/admin/loans/approve/{id}', [AdminController::class, 'approveLoan'])->name('admin.loans.approve');
+    Route::post('/admin/loans/reject/{id}', [AdminController::class, 'rejectLoan'])->name('admin.loans.reject');
+    Route::post('/admin/loans/payment/{id}', [AdminController::class, 'updateLoanPayment'])->name('admin.loans.payment');
     
     Route::get('/admin/settings', [AdminController::class, 'settings'])->name('admin.settings');
 });

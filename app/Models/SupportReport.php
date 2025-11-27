@@ -12,7 +12,6 @@ class SupportReport extends Model
         'subject',
         'message',
         'status',
-        'priority',
         'admin_reply',
         'replied_by',
         'replied_at',

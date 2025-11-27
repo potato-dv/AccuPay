@@ -11,6 +11,8 @@ use App\Models\LeaveApplication;
 use App\Models\Payslip;
 use App\Models\User;
 use App\Models\SupportReport;
+use App\Models\Loan;
+use App\Models\LoanPayment;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 
@@ -47,7 +49,7 @@ class AdminController extends Controller
             $query->where('employee_id', $request->employee_id);
         }
 
-        $attendances = $query->paginate(20);
+        $attendances = $query->get();
         $employees = Employee::where('status', 'active')->orderBy('employee_id')->get();
 
         return view('admin.manage_attendance', compact('attendances', 'employees'));
@@ -84,16 +86,29 @@ class AdminController extends Controller
                 $timeOut->addDay();
             }
             
-            $hoursWorked = abs($timeOut->diffInMinutes($timeIn)) / 60;
-            $validated['hours_worked'] = round($hoursWorked, 2);
-
-            // Get employee's work schedule to calculate overtime
+            // Calculate total time in minutes
+            $totalMinutes = abs($timeOut->diffInMinutes($timeIn));
+            
+            // Get employee's work schedule
             $employee = Employee::find($validated['employee_id']);
             $regularHours = 8; // Default to 8 hours
+            $breakMinutes = 0;
             
             if ($employee && $employee->workSchedule) {
                 $regularHours = $employee->workSchedule->daily_hours ?? 8;
+                
+                // Calculate break duration if break times are set and break is unpaid
+                if ($employee->workSchedule->break_start && $employee->workSchedule->break_end && !$employee->workSchedule->break_paid) {
+                    $breakStart = \Carbon\Carbon::parse($date . ' ' . $employee->workSchedule->break_start);
+                    $breakEnd = \Carbon\Carbon::parse($date . ' ' . $employee->workSchedule->break_end);
+                    $breakMinutes = abs($breakEnd->diffInMinutes($breakStart));
+                }
             }
+            
+            // Subtract unpaid break time from total minutes
+            $workedMinutes = $totalMinutes - $breakMinutes;
+            $hoursWorked = $workedMinutes / 60;
+            $validated['hours_worked'] = round($hoursWorked, 2);
 
             // Calculate overtime (hours worked beyond regular hours)
             if ($hoursWorked > $regularHours) {
@@ -134,16 +149,29 @@ class AdminController extends Controller
                 $timeOut->addDay();
             }
             
-            $hoursWorked = abs($timeOut->diffInMinutes($timeIn)) / 60;
-            $validated['hours_worked'] = round($hoursWorked, 2);
-
-            // Get employee's work schedule to calculate overtime
+            // Calculate total time in minutes
+            $totalMinutes = abs($timeOut->diffInMinutes($timeIn));
+            
+            // Get employee's work schedule
             $employee = Employee::find($attendance->employee_id);
             $regularHours = 8; // Default to 8 hours
+            $breakMinutes = 0;
             
             if ($employee && $employee->workSchedule) {
                 $regularHours = $employee->workSchedule->daily_hours ?? 8;
+                
+                // Calculate break duration if break times are set and break is unpaid
+                if ($employee->workSchedule->break_start && $employee->workSchedule->break_end && !$employee->workSchedule->break_paid) {
+                    $breakStart = \Carbon\Carbon::parse($date . ' ' . $employee->workSchedule->break_start);
+                    $breakEnd = \Carbon\Carbon::parse($date . ' ' . $employee->workSchedule->break_end);
+                    $breakMinutes = abs($breakEnd->diffInMinutes($breakStart));
+                }
             }
+            
+            // Subtract unpaid break time from total minutes
+            $workedMinutes = $totalMinutes - $breakMinutes;
+            $hoursWorked = $workedMinutes / 60;
+            $validated['hours_worked'] = round($hoursWorked, 2);
 
             // Calculate overtime (hours worked beyond regular hours)
             if ($hoursWorked > $regularHours) {
@@ -399,17 +427,61 @@ class AdminController extends Controller
 
             $grossPay = $basicSalary + $overtimePay;
 
-            // Calculate deductions (simplified)
-            $sss = $grossPay * 0.045; // 4.5% SSS
-            $philhealth = $grossPay * 0.02; // 2% PhilHealth
-            $pagibig = min($grossPay * 0.02, 100); // 2% Pag-IBIG, max 100
-            $tax = $grossPay > 20833 ? ($grossPay - 20833) * 0.20 : 0; // Simplified tax
+            // Calculate late deduction (10 minutes or more late)
+            $lateDeduction = 0;
+            $lateAttendances = $attendances->where('status', 'late');
+            foreach ($lateAttendances as $lateAtt) {
+                if ($lateAtt->time_in && $employee->workSchedule) {
+                    $attendanceDate = \Carbon\Carbon::parse($lateAtt->date)->format('Y-m-d');
+                    $scheduledTime = \Carbon\Carbon::parse($attendanceDate . ' ' . $employee->workSchedule->time_in);
+                    $actualTime = \Carbon\Carbon::parse($attendanceDate . ' ' . $lateAtt->time_in);
+                    $lateMinutes = $scheduledTime->diffInMinutes($actualTime, false);
+                    
+                    if ($lateMinutes >= 10) {
+                        // Deduct based on hourly rate and minutes late
+                        $lateDeduction += ($employee->hourly_rate / 60) * $lateMinutes;
+                    }
+                }
+            }
 
-            $totalDeductions = $sss + $philhealth + $pagibig + $tax;
+            // Calculate deductions
+            $sssRate = 4.5;
+            $philhealthRate = 2.0;
+            $pagibigRate = 2.0;
+            
+            $sss = $grossPay * ($sssRate / 100); // 4.5% SSS
+            $philhealth = $grossPay * ($philhealthRate / 100); // 2% PhilHealth
+            $pagibig = min($grossPay * ($pagibigRate / 100), 100); // 2% Pag-IBIG, max 100
+            
+            // Calculate tax rate based on income bracket
+            $taxRate = 0;
+            if ($grossPay > 20833) {
+                $taxRate = 20; // 20%
+                $tax = ($grossPay - 20833) * 0.20;
+            } else {
+                $tax = 0;
+            }
+
+            // Calculate loan deductions
+            $loanDeduction = 0;
+            $activeLoans = Loan::where('employee_id', $employee->id)
+                ->where('status', 'approved')
+                ->where('remaining_balance', '>', 0)
+                ->whereNotNull('start_date')
+                ->where('start_date', '<=', $validated['payment_date'])
+                ->get();
+
+            foreach ($activeLoans as $loan) {
+                // Deduct the monthly amount or remaining balance (whichever is smaller)
+                $deductionAmount = min($loan->monthly_deduction, $loan->remaining_balance);
+                $loanDeduction += $deductionAmount;
+            }
+
+            $totalDeductions = $sss + $philhealth + $pagibig + $tax + $loanDeduction + $lateDeduction;
             $netPay = $grossPay - $totalDeductions;
 
             // Create payslip
-            Payslip::create([
+            $payslip = Payslip::create([
                 'payroll_id' => $payroll->id,
                 'employee_id' => $employee->id,
                 'basic_salary' => $basicSalary,
@@ -418,10 +490,16 @@ class AdminController extends Controller
                 'bonuses' => 0,
                 'gross_pay' => $grossPay,
                 'tax' => $tax,
+                'tax_rate' => $taxRate,
                 'sss' => $sss,
+                'sss_rate' => $sssRate,
                 'philhealth' => $philhealth,
+                'philhealth_rate' => $philhealthRate,
                 'pagibig' => $pagibig,
+                'pagibig_rate' => $pagibigRate,
                 'other_deductions' => 0,
+                'loan_deductions' => $loanDeduction,
+                'late_deduction' => $lateDeduction,
                 'total_deductions' => $totalDeductions,
                 'net_pay' => $netPay,
                 'hours_worked' => $hoursWorked,
@@ -430,6 +508,32 @@ class AdminController extends Controller
                 'days_absent' => $daysAbsent,
                 'days_late' => $daysLate,
             ]);
+
+            // Record loan payments for each active loan
+            foreach ($activeLoans as $loan) {
+                $deductionAmount = min($loan->monthly_deduction, $loan->remaining_balance);
+                
+                // Create payment record
+                LoanPayment::create([
+                    'loan_id' => $loan->id,
+                    'payroll_id' => $payroll->id,
+                    'amount' => $deductionAmount,
+                    'payment_date' => $validated['payment_date'],
+                    'payment_type' => 'automatic',
+                    'notes' => 'Automatic deduction from payroll: ' . $validated['payroll_period'],
+                    'processed_by' => Auth::id(),
+                ]);
+
+                // Update loan balance
+                $newPaidAmount = $loan->paid_amount + $deductionAmount;
+                $newRemainingBalance = $loan->remaining_balance - $deductionAmount;
+                
+                $loan->update([
+                    'paid_amount' => $newPaidAmount,
+                    'remaining_balance' => $newRemainingBalance,
+                    'status' => $newRemainingBalance <= 0 ? 'completed' : 'approved',
+                ]);
+            }
 
             $totalAmount += $netPay;
             $employeeCount++;
@@ -657,7 +761,7 @@ class AdminController extends Controller
             $query->where('payroll_id', $request->payroll_id);
         }
 
-        $payslips = $query->paginate(20);
+        $payslips = $query->get();
         $payrolls = Payroll::where('status', 'approved')->orderBy('created_at', 'desc')->get();
 
         return view('admin.manage_payslip', compact('payslips', 'payrolls'));
@@ -753,7 +857,7 @@ class AdminController extends Controller
                 return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
             }
             
-            $reportData = $query->latest()->paginate(20);
+            $reportData = $query->latest()->get();
             
         } elseif ($reportType === 'deductions') {
             $query = Payslip::with(['employee', 'payroll'])
@@ -787,7 +891,7 @@ class AdminController extends Controller
                 return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
             }
             
-            $reportData = $query->latest()->paginate(20);
+            $reportData = $query->latest()->get();
             
         } elseif ($reportType === 'overtime') {
             $query = Attendance::with('employee')->where('overtime_hours', '>', 0);
@@ -809,7 +913,7 @@ class AdminController extends Controller
                 return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
             }
             
-            $reportData = $query->latest('date')->paginate(20);
+            $reportData = $query->latest('date')->get();
             
         } elseif ($reportType === 'leave_balance') {
             $query = Employee::query();
@@ -838,8 +942,7 @@ class AdminController extends Controller
                 return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
             }
             
-            $reportData = $query->paginate(20);
-            $reportData->getCollection()->transform(function($emp) use ($dateFrom, $dateTo) {
+            $reportData = $query->get()->map(function($emp) use ($dateFrom, $dateTo) {
                 $year = $dateTo ? \Carbon\Carbon::parse($dateTo)->year : now()->year;
                 $totalLeave = 12;
                 $usedLeave = LeaveApplication::where('employee_id', $emp->id)
@@ -868,7 +971,7 @@ class AdminController extends Controller
                 return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
             }
             
-            $reportData = $query->paginate(20);
+            $reportData = $query->get();
             
         } elseif ($reportType === 'attendance') {
             $query = Attendance::with('employee');
@@ -894,7 +997,7 @@ class AdminController extends Controller
                 return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
             }
             
-            $reportData = $query->latest('date')->paginate(20);
+            $reportData = $query->latest('date')->get();
             
         } elseif ($reportType === 'leave') {
             $query = LeaveApplication::with('employee');
@@ -919,7 +1022,7 @@ class AdminController extends Controller
                 return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
             }
             
-            $reportData = $query->latest()->paginate(20);
+            $reportData = $query->latest()->get();
             
         } elseif ($reportType === 'employee') {
             $query = Employee::query();
@@ -940,12 +1043,10 @@ class AdminController extends Controller
                 return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
             }
             
-            $reportData = $query->paginate(20);
+            $reportData = $query->get();
         }
-
-        $employees = Employee::all();
-
-        return view('admin.manage_reports', compact(
+        
+        $employees = Employee::all();        return view('admin.manage_reports', compact(
             'totalEmployees',
             'totalPayrolls',
             'totalAttendance',
@@ -1263,11 +1364,6 @@ class AdminController extends Controller
             $query->where('type', $request->type);
         }
 
-        // Filter by priority
-        if ($request->priority) {
-            $query->where('priority', $request->priority);
-        }
-
         // Search by subject or employee name
         if ($request->search) {
             $query->where(function($q) use ($request) {
@@ -1278,7 +1374,7 @@ class AdminController extends Controller
             });
         }
 
-        $reports = $query->paginate(20);
+        $reports = $query->get();
 
         return view('admin.support_reports', compact('reports'));
     }
@@ -1316,5 +1412,102 @@ class AdminController extends Controller
     public function settings()
     {
         return view('admin.settings');
+    }
+
+    public function manageLoans(Request $request)
+    {
+        $query = Loan::with(['employee', 'approvedBy', 'payments'])->orderBy('created_at', 'desc');
+
+        // Filter by status
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        // Search by employee name
+        if ($request->search) {
+            $query->whereHas('employee', function($q) use ($request) {
+                $q->where('first_name', 'like', '%' . $request->search . '%')
+                  ->orWhere('last_name', 'like', '%' . $request->search . '%')
+                  ->orWhere('employee_id', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        $loans = $query->get();
+
+        $employees = Employee::where('status', 'active')->orderBy('first_name')->orderBy('last_name')->get();
+
+        return view('admin.manage_loans', compact('loans', 'employees'));
+    }
+
+    public function approveLoan(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'start_date' => 'required|date|after_or_equal:today',
+        ]);
+
+        $loan = Loan::findOrFail($id);
+        $loan->update([
+            'status' => 'approved',
+            'start_date' => $validated['start_date'],
+            'approved_by' => Auth::id(),
+            'approved_at' => now(),
+            'reason' => null,
+        ]);
+
+        return redirect()->back()->with('success', 'Loan approved successfully!');
+    }
+
+    public function rejectLoan(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        $loan = Loan::findOrFail($id);
+        $loan->update([
+            'status' => 'rejected',
+            'reason' => $validated['reason'],
+            'approved_by' => Auth::id(),
+            'approved_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Loan rejected.');
+    }
+
+    public function updateLoanPayment(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'payment_amount' => 'required|numeric|min:0.01',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $loan = Loan::findOrFail($id);
+        
+        if ($validated['payment_amount'] > $loan->remaining_balance) {
+            return redirect()->back()->withErrors(['payment_amount' => 'Payment amount cannot exceed remaining balance.']);
+        }
+
+        // Create manual payment record
+        LoanPayment::create([
+            'loan_id' => $loan->id,
+            'payroll_id' => null,
+            'amount' => $validated['payment_amount'],
+            'payment_date' => now(),
+            'payment_type' => 'manual',
+            'notes' => $validated['notes'] ?? 'Manual payment recorded by admin',
+            'processed_by' => Auth::id(),
+        ]);
+
+        // Update loan balance
+        $newPaidAmount = $loan->paid_amount + $validated['payment_amount'];
+        $newRemainingBalance = $loan->remaining_balance - $validated['payment_amount'];
+        
+        $loan->update([
+            'paid_amount' => $newPaidAmount,
+            'remaining_balance' => $newRemainingBalance,
+            'status' => $newRemainingBalance <= 0 ? 'completed' : 'approved',
+        ]);
+
+        return redirect()->back()->with('success', 'Loan payment recorded successfully!');
     }
 }

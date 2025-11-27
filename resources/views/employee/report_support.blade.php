@@ -23,7 +23,8 @@
             <li><a href="{{ route('employee.leave.application') }}"><i class="fa-solid fa-calendar-plus"></i> <span class="menu-text">Leave Application</span></a></li>
             <li><a href="{{ route('employee.leave.status') }}"><i class="fa-solid fa-calendar-check"></i> <span class="menu-text">Leave Status</span></a></li>
             <li><a href="{{ route('employee.payslip') }}"><i class="fa-solid fa-file-invoice-dollar"></i> <span class="menu-text">Payslip</span></a></li>
-            <li class="active"><a href="{{ route('employee.report') }}"><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Reports</span></a></li>
+            <li><a href="{{ route('employee.loans') }}"><i class="fa-solid fa-hand-holding-dollar"></i> <span class="menu-text">Loans</span></a></li>
+            <li><a href="{{ route('employee.report') }}"><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Reports</span></a></li>
             <li><a href="{{ route('employee.settings') }}"><i class="fa-solid fa-gear"></i> <span class="menu-text">Settings</span></a></li>
         </ul>
     </div>
@@ -104,28 +105,16 @@
             <p>If you encounter any issues or need assistance, submit your ticket below:</p>
             <form action="{{ route('employee.support.submit') }}" method="POST" class="support-form">
                 @csrf
-                <div class="row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                    <div>
-                        <label for="type">Issue Type</label>
-                        <select id="type" name="type" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                            <option value="">Select Type</option>
-                            <option value="technical">Technical Issue</option>
-                            <option value="payroll">Payroll Issue</option>
-                            <option value="leave">Leave Issue</option>
-                            <option value="attendance">Attendance Issue</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="priority">Priority</label>
-                        <select id="priority" name="priority" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                            <option value="">Select Priority</option>
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                            <option value="urgent">Urgent</option>
-                        </select>
-                    </div>
+                <div style="margin-bottom: 15px;">
+                    <label for="type">Issue Type</label>
+                    <select id="type" name="type" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">Select Type</option>
+                        <option value="technical">Technical Issue</option>
+                        <option value="payroll">Payroll Issue</option>
+                        <option value="leave">Leave Issue</option>
+                        <option value="attendance">Attendance Issue</option>
+                        <option value="other">Other</option>
+                    </select>
                 </div>
                 
                 <label for="subject">Subject</label>
@@ -138,9 +127,9 @@
             </form>
         </section>
 
-        <!-- Support Tickets History -->
+        <!-- Help Desk History -->
         <section class="reports-section">
-            <h2>My Support Tickets</h2>
+            <h2>My Help Desk Tickets</h2>
             @if($supportReports->count() > 0)
                 <div class="table-responsive" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <table style="width: 100%; border-collapse: collapse;">
@@ -149,7 +138,6 @@
                                 <th style="padding: 12px; text-align: left;">#</th>
                                 <th style="padding: 12px; text-align: left;">Type</th>
                                 <th style="padding: 12px; text-align: left;">Subject</th>
-                                <th style="padding: 12px; text-align: left;">Priority</th>
                                 <th style="padding: 12px; text-align: left;">Status</th>
                                 <th style="padding: 12px; text-align: left;">Submitted</th>
                                 <th style="padding: 12px; text-align: left;">Action</th>
@@ -165,17 +153,6 @@
                                         </span>
                                     </td>
                                     <td style="padding: 12px;">{{ Str::limit($report->subject, 40) }}</td>
-                                    <td style="padding: 12px;">
-                                        @if($report->priority == 'urgent')
-                                            <span style="padding: 4px 8px; background: #dc3545; color: white; border-radius: 4px; font-size: 12px;">Urgent</span>
-                                        @elseif($report->priority == 'high')
-                                            <span style="padding: 4px 8px; background: #ffc107; color: #000; border-radius: 4px; font-size: 12px;">High</span>
-                                        @elseif($report->priority == 'medium')
-                                            <span style="padding: 4px 8px; background: #0dcaf0; color: white; border-radius: 4px; font-size: 12px;">Medium</span>
-                                        @else
-                                            <span style="padding: 4px 8px; background: #6c757d; color: white; border-radius: 4px; font-size: 12px;">Low</span>
-                                        @endif
-                                    </td>
                                     <td style="padding: 12px;">
                                         @if($report->status == 'pending')
                                             <span style="padding: 4px 8px; background: #ffc107; color: #000; border-radius: 4px; font-size: 12px;">Pending</span>
@@ -220,7 +197,7 @@
                 </div>
             @else
                 <div style="background: white; padding: 40px; text-align: center; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <p style="color: #6c757d; margin: 0;">No support tickets submitted yet.</p>
+                    <p style="color: #6c757d; margin: 0;">No help desk tickets submitted yet.</p>
                 </div>
             @endif
         </section>

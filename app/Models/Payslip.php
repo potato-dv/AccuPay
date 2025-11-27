@@ -9,7 +9,7 @@ class Payslip extends Model
     protected $fillable = [
         'payroll_id', 'employee_id', 'basic_salary', 'overtime_pay', 'allowances',
         'bonuses', 'gross_pay', 'tax', 'sss', 'philhealth', 'pagibig',
-        'other_deductions', 'total_deductions', 'net_pay', 'hours_worked', 'overtime_hours',
+        'other_deductions', 'loan_deductions', 'total_deductions', 'net_pay', 'hours_worked', 'overtime_hours',
         'days_present', 'days_absent', 'days_late'
     ];
 
@@ -24,6 +24,7 @@ class Payslip extends Model
         'philhealth' => 'decimal:2',
         'pagibig' => 'decimal:2',
         'other_deductions' => 'decimal:2',
+        'loan_deductions' => 'decimal:2',
         'total_deductions' => 'decimal:2',
         'net_pay' => 'decimal:2',
         'hours_worked' => 'decimal:2',

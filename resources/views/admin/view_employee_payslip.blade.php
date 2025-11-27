@@ -20,8 +20,9 @@
             <li class="active"><a href="{{ route('admin.payroll') }}"><i class="fa-solid fa-file-invoice-dollar"></i> <span class="menu-text">Manage Payroll</span></a></li>
             <li><a href="{{ route('admin.payslip') }}"><i class="fa-solid fa-file-lines"></i> <span class="menu-text">Manage Payslip</span></a></li>
             <li><a href="{{ route('admin.leave') }}"><i class="fa-solid fa-envelope-open-text"></i> <span class="menu-text">Leave Requests</span></a></li>
+            <li><a href="{{ route('admin.loans') }}"><i class="fa-solid fa-hand-holding-dollar"></i> <span class="menu-text">Loans</span></a></li>
             <li><a href="{{ route('admin.reports') }}"><i class="fa-solid fa-file-contract"></i> <span class="menu-text">Reports</span></a></li>
-            <li><a href="{{ route('admin.support.reports') }}"><i class="fa-solid fa-headset"></i> <span class="menu-text">Support Tickets</span></a></li>
+            <li><a href="{{ route('admin.support.reports') }}"><i class="fa-solid fa-headset"></i> <span class="menu-text">Help Desk</span></a></li>
             <li><a href="{{ route('admin.users') }}"><i class="fa-solid fa-user-gear"></i> <span class="menu-text">User Accounts</span></a></li>
             <li><a href="{{ route('admin.settings') }}"><i class="fa-solid fa-gear"></i> <span class="menu-text">Settings</span></a></li>
         </ul>
@@ -118,21 +119,33 @@
                                     <td style="padding: 8px 0; text-align: right; font-weight: 700;">₱{{ number_format($payslip->gross_pay, 2) }}</td>
                                 </tr>
                                 <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding: 8px 0; color: #666;">SSS</td>
+                                    <td style="padding: 8px 0; color: #666;">SSS ({{ number_format($payslip->sss_rate ?? 4.5, 1) }}%)</td>
                                     <td style="padding: 8px 0; text-align: right; font-weight: 600;">₱{{ number_format($payslip->sss, 2) }}</td>
                                 </tr>
                                 <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding: 8px 0; color: #666;">PhilHealth</td>
+                                    <td style="padding: 8px 0; color: #666;">PhilHealth ({{ number_format($payslip->philhealth_rate ?? 2.0, 1) }}%)</td>
                                     <td style="padding: 8px 0; text-align: right; font-weight: 600;">₱{{ number_format($payslip->philhealth, 2) }}</td>
                                 </tr>
                                 <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding: 8px 0; color: #666;">Pag-IBIG</td>
+                                    <td style="padding: 8px 0; color: #666;">Pag-IBIG ({{ number_format($payslip->pagibig_rate ?? 2.0, 1) }}%)</td>
                                     <td style="padding: 8px 0; text-align: right; font-weight: 600;">₱{{ number_format($payslip->pagibig, 2) }}</td>
                                 </tr>
                                 <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding: 8px 0; color: #666;">Tax</td>
+                                    <td style="padding: 8px 0; color: #666;">Tax ({{ number_format($payslip->tax_rate ?? 0, 1) }}%)</td>
                                     <td style="padding: 8px 0; text-align: right; font-weight: 600;">₱{{ number_format($payslip->tax, 2) }}</td>
                                 </tr>
+                                @if($payslip->late_deduction > 0)
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px 0; color: #666;">Late Deduction</td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #dc3545;">₱{{ number_format($payslip->late_deduction, 2) }}</td>
+                                </tr>
+                                @endif
+                                @if($payslip->loan_deductions > 0)
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px 0; color: #666;">Loan Deduction</td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: 600;">₱{{ number_format($payslip->loan_deductions, 2) }}</td>
+                                </tr>
+                                @endif
                                 <tr style="border-bottom: 2px solid #ddd;">
                                     <td style="padding: 8px 0; color: #333; font-weight: 700;">Total Deductions</td>
                                     <td style="padding: 8px 0; text-align: right; font-weight: 700; color: #dc3545;">₱{{ number_format($payslip->total_deductions, 2) }}</td>

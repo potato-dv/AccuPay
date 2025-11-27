@@ -9,6 +9,7 @@ use App\Models\Attendance;
 use App\Models\LeaveApplication;
 use App\Models\Payslip;
 use App\Models\SupportReport;
+use App\Models\Loan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
@@ -305,7 +306,6 @@ class EmployeeController extends Controller
             'type' => 'required|in:technical,payroll,leave,attendance,other',
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
-            'priority' => 'required|in:low,medium,high,urgent',
         ]);
 
         $user = Auth::user();
@@ -316,11 +316,10 @@ class EmployeeController extends Controller
             'type' => $validated['type'],
             'subject' => $validated['subject'],
             'message' => $validated['message'],
-            'priority' => $validated['priority'],
             'status' => 'pending',
         ]);
 
-        return redirect()->route('employee.report')->with('success', 'Support report submitted successfully!');
+        return redirect()->route('employee.report')->with('success', 'Help desk ticket submitted successfully!');
     }
 
     public function settings()
@@ -385,5 +384,56 @@ class EmployeeController extends Controller
         }
 
         return $activities;
+    }
+
+    public function loans()
+    {
+        $user = Auth::user();
+        $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+
+        $loans = Loan::where('employee_id', $employee->id)
+            ->with('payments')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $activeLoans = Loan::where('employee_id', $employee->id)
+            ->where('status', 'approved')
+            ->where('remaining_balance', '>', 0)
+            ->with('payments')
+            ->get();
+
+        // Calculate totals using paid_amount field
+        $totalBorrowed = $loans->whereIn('status', ['approved', 'completed'])->sum('amount');
+        $totalPaid = $loans->whereIn('status', ['approved', 'completed'])->sum('paid_amount');
+        $totalRemaining = $loans->where('status', 'approved')->sum('remaining_balance');
+
+        return view('employee.loans', compact('employee', 'loans', 'activeLoans', 'totalBorrowed', 'totalPaid', 'totalRemaining'));
+    }
+
+    public function storeLoan(Request $request)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:100|max:100000',
+            'purpose' => 'required|string|max:255',
+            'terms' => 'required|integer|min:1|max:24',
+        ]);
+
+        $user = Auth::user();
+        $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+
+        $monthlyDeduction = round($validated['amount'] / $validated['terms'], 2);
+
+        Loan::create([
+            'employee_id' => $employee->id,
+            'amount' => $validated['amount'],
+            'purpose' => $validated['purpose'],
+            'terms' => $validated['terms'],
+            'monthly_deduction' => $monthlyDeduction,
+            'paid_amount' => 0,
+            'remaining_balance' => $validated['amount'],
+            'status' => 'pending',
+        ]);
+
+        return redirect()->route('employee.loans')->with('success', 'Loan request submitted successfully! Wait for admin approval.');
     }
 }

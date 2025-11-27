@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Attendance</title>
-    <link rel="icon" type="image/png" href="{{ asset('images/admin/logo.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/accupay.png') }}">
     <link rel="stylesheet" href="{{ asset('css/admin/style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
 </head>
@@ -22,8 +22,9 @@
             <li><a href="{{ route('admin.payroll') }}"><i class="fa-solid fa-file-invoice-dollar"></i> <span class="menu-text">Manage Payroll</span></a></li>
             <li><a href="{{ route('admin.payslip') }}"><i class="fa-solid fa-file-lines"></i> <span class="menu-text">Manage Payslip</span></a></li>
             <li><a href="{{ route('admin.leave') }}"><i class="fa-solid fa-calendar-check"></i> <span class="menu-text">Leave Requests</span></a></li>
+            <li><a href="{{ route('admin.loans') }}"><i class="fa-solid fa-hand-holding-dollar"></i> <span class="menu-text">Loans</span></a></li>
             <li><a href="{{ route('admin.reports') }}"><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Reports</span></a></li>
-            <li><a href="{{ route('admin.support.reports') }}"><i class="fa-solid fa-headset"></i> <span class="menu-text">Support Tickets</span></a></li>
+            <li><a href="{{ route('admin.support.reports') }}"><i class="fa-solid fa-headset"></i> <span class="menu-text">Help Desk</span></a></li>
             <li><a href="{{ route('admin.users') }}"><i class="fa-solid fa-users-gear"></i> <span class="menu-text">User Accounts</span></a></li>
             <li><a href="{{ route('admin.settings') }}"><i class="fa-solid fa-gear"></i> <span class="menu-text">Settings</span></a></li>
         </ul>
@@ -33,9 +34,9 @@
     <header class="navbar">
         <div class="navbar-left">
             <img src="{{ asset('images/accupay.png') }}" alt="Logo" class="navbar-logo">
-            <h1>Manage Attendance</h1>
+            <h1 id="page-title">Manage Attendance</h1>
         </div>
-        <form action="{{ route('logout') }}" method="POST" style="display: inline;">@csrf<button type="submit" class="logout-btn">Log Out</button></form>
+        <form action="{{ route('logout') }}" method="POST" style="display: inline;">@csrf<button type="submit" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Log Out</button></form>
     </header>
 
     <!-- MAIN CONTENT -->
@@ -63,7 +64,7 @@
         <!-- QUICK ACTIONS -->
         <section class="quick-actions">
             <div class="table-header">
-                <div class="employee-count">Total Records: {{ $attendances->total() }}</div>
+                <div class="employee-count">Total Records: {{ $attendances->count() }}</div>
                 <button type="button" class="action-btn" onclick="showAddModal()">
                     <i class="fa-solid fa-plus"></i> Add Attendance Record
                 </button>
@@ -99,6 +100,7 @@
 
         <!-- ATTENDANCE TABLE -->
         <section class="attendance-list">
+            <div style="overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
             <table>
                 <thead>
                     <tr>
@@ -121,19 +123,21 @@
                         <td>{{ date('M d, Y', strtotime($attendance->date)) }}</td>
                         <td>{{ $attendance->time_in ? date('h:i A', strtotime($attendance->time_in)) : '-' }}</td>
                         <td>{{ $attendance->time_out ? date('h:i A', strtotime($attendance->time_out)) : '-' }}</td>
-                        <td>{{ $attendance->hours_worked ?? '-' }} hrs</td>
-                        <td>{{ $attendance->overtime_hours ?? '0' }} hrs</td>
+                        <td>{{ $attendance->hours_worked ? number_format($attendance->hours_worked, 2) : '0.00' }} hrs</td>
+                        <td>{{ $attendance->overtime_hours ? number_format($attendance->overtime_hours, 2) : '0.00' }} hrs</td>
                         <td>
-                            <span style="padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 500;
-                                @if($attendance->status == 'present') background: #d4edda; color: #155724;
-                                @elseif($attendance->status == 'absent') background: #f8d7da; color: #721c24;
-                                @elseif($attendance->status == 'on-leave') background: #fff3cd; color: #856404;
-                                @else background: #e2e3e5; color: #383d41; @endif">
-                                {{ ucfirst($attendance->status) }}
-                            </span>
+                            @if($attendance->status == 'present')
+                                <span style="padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 500; background: #d4edda; color: #155724;">{{ ucfirst($attendance->status) }}</span>
+                            @elseif($attendance->status == 'absent')
+                                <span style="padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 500; background: #f8d7da; color: #721c24;">{{ ucfirst($attendance->status) }}</span>
+                            @elseif($attendance->status == 'on-leave')
+                                <span style="padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 500; background: #fff3cd; color: #856404;">{{ ucfirst($attendance->status) }}</span>
+                            @else
+                                <span style="padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 500; background: #e2e3e5; color: #383d41;">{{ ucfirst($attendance->status) }}</span>
+                            @endif
                         </td>
                         <td>
-                            <button class="action-btn btn-theme btn-sm" onclick="editAttendance({{ $attendance->id }}, '{{ $attendance->employee_id }}', '{{ $attendance->date }}', '{{ $attendance->time_in ? date('H:i', strtotime($attendance->time_in)) : '' }}', '{{ $attendance->time_out ? date('H:i', strtotime($attendance->time_out)) : '' }}', '{{ $attendance->status }}', '{{ addslashes($attendance->remarks ?? '') }}')">
+                            <button class="action-btn btn-theme btn-sm" onclick="editAttendance({{ $attendance->id }}, '{{ $attendance->employee->employee_id }}', '{{ $attendance->date }}', '{{ $attendance->time_in ? date('H:i', strtotime($attendance->time_in)) : '' }}', '{{ $attendance->time_out ? date('H:i', strtotime($attendance->time_out)) : '' }}', '{{ $attendance->status }}', '{{ addslashes($attendance->remarks ?? '') }}')">
                                 <i class="fa-solid fa-pen-to-square"></i> Edit
                             </button>
                             <form action="{{ route('admin.attendance.delete', $attendance->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Delete this attendance record?');">
@@ -155,12 +159,7 @@
                     @endforelse
                 </tbody>
             </table>
-            
-            @if($attendances->hasPages())
-                <div style="margin-top: 20px;">
-                    {{ $attendances->links() }}
-                </div>
-            @endif
+            </div>
         </section>
     </main>
 

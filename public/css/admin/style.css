@@ -144,9 +144,11 @@ body {
 /* ---------- MAIN CONTENT ---------- */
 .main-content {
     margin-left: 230px;
-    padding: 80px 20px 20px 20px;
+    padding: 80px 20px 60px 20px;
     width: calc(100% - 230px);
     transition: margin-left 0.3s, width 0.3s;
+    min-height: calc(100vh - 80px);
+    overflow-y: auto;
 }
 
 /* ---------- DASHBOARD STATS ---------- */
@@ -261,7 +263,7 @@ body {
 /* ---------- EMPLOYEE / ATTENDANCE LIST ---------- */
 .employee-list,
 .attendance-list {
-    margin-bottom: 50px;
+    margin-bottom: 15px;
 }
 
 .employee-list h2,
@@ -275,10 +277,7 @@ body {
 .attendance-list table {
     width: 100%;
     border-collapse: collapse;
-    border-radius: 8px;
-    overflow: hidden;
     background-color: #ffffff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
 .employee-list th,
@@ -301,6 +300,75 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+
+
+/* ---------- PAGINATION ---------- */
+nav {
+    display: block;
+    width: 100%;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 0;
+    list-style: none;
+    margin: 0;
+    flex-wrap: wrap;
+}
+
+.pagination li {
+    display: inline-block;
+    margin: 0;
+}
+
+.pagination a,
+.pagination span {
+    display: inline-block;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    color: #0057a0;
+    text-decoration: none;
+    transition: all 0.2s;
+    font-size: 14px;
+    min-width: 40px;
+    text-align: center;
+    background-color: #ffffff;
+    font-weight: 500;
+}
+
+.pagination a:hover {
+    background-color: #0057a0;
+    color: white;
+    border-color: #0057a0;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0, 87, 160, 0.2);
+}
+
+.pagination .active span {
+    background-color: #0057a0;
+    color: white;
+    border-color: #0057a0;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 87, 160, 0.3);
+}
+
+.pagination .disabled span {
+    color: #ccc;
+    cursor: not-allowed;
+    border-color: #e5e5e5;
+    background-color: #f8f9fa;
+}
+
+.pagination svg {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+}
+
 
 /* Specific column widths for employee list */
 .employee-list th:nth-child(1),

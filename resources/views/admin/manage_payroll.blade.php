@@ -21,6 +21,7 @@
             <li class="active"><a href="{{ route('admin.payroll') }}"><i class="fa-solid fa-file-invoice-dollar"></i> <span class="menu-text">Manage Payroll</span></a></li>
             <li><a href="{{ route('admin.payslip') }}"><i class="fa-solid fa-file-lines"></i> <span class="menu-text">Manage Payslip</span></a></li>
             <li><a href="{{ route('admin.leave') }}"><i class="fa-solid fa-calendar-check"></i> <span class="menu-text">Leave Requests</span></a></li>
+            <li><a href="{{ route('admin.loans') }}"><i class="fa-solid fa-hand-holding-dollar"></i> <span class="menu-text">Loans</span></a></li>
             <li><a href="{{ route('admin.reports') }}"><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Reports</span></a></li>
             <li><a href="{{ route('admin.support.reports') }}"><i class="fa-solid fa-headset"></i> <span class="menu-text">Help Desk</span></a></li>
             <li><a href="{{ route('admin.users') }}"><i class="fa-solid fa-users-gear"></i> <span class="menu-text">User Accounts</span></a></li>
@@ -106,25 +107,25 @@
                             </span>
                         </td>
                         <td>
-                            <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
-                                <a href="{{ route('admin.payroll.view', $payroll->id) }}" class="btn-sm" style="background: #17a2b8; color: white; text-decoration: none;">
+                            <div style="display: flex; gap: 5px; justify-content: flex-start; flex-wrap: wrap;">
+                                <a href="{{ route('admin.payroll.view', $payroll->id) }}" class="btn-sm" style="background: #17a2b8; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 13px; white-space: nowrap;">
                                     <i class="fa-solid fa-eye"></i> View
                                 </a>
                                 @if($payroll->status == 'pending')
-                                    <a href="{{ route('admin.payroll.edit', $payroll->id) }}" class="btn-sm" style="background: #00a86b; color: white; text-decoration: none;">
+                                    <a href="{{ route('admin.payroll.edit', $payroll->id) }}" class="btn-sm" style="background: #00a86b; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 13px; white-space: nowrap;">
                                         <i class="fa-solid fa-edit"></i> Edit
                                     </a>
-                                    <form action="{{ route('admin.payroll.approve', $payroll->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Approve this payroll? Employees will be able to view it.');">
+                                    <form action="{{ route('admin.payroll.approve', $payroll->id) }}" method="POST" style="display: inline-block; margin: 0;" onsubmit="return confirm('Approve this payroll? Employees will be able to view it.');">
                                         @csrf
                                         @method('PUT')
-                                        <button type="submit" class="btn-sm" style="background: #28a745; color: white; border: none; cursor: pointer;">
+                                        <button type="submit" class="btn-sm" style="background: #28a745; color: white; border: none; cursor: pointer; padding: 6px 12px; border-radius: 4px; font-size: 13px; white-space: nowrap;">
                                             <i class="fa-solid fa-check"></i> Approve
                                         </button>
                                     </form>
-                                    <form action="{{ route('admin.payroll.delete', $payroll->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Delete this pending payroll?');">
+                                    <form action="{{ route('admin.payroll.delete', $payroll->id) }}" method="POST" style="display: inline-block; margin: 0;" onsubmit="return confirm('Delete this pending payroll?');">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn-sm" style="background: #e74c3c; color: white; border: none; cursor: pointer;">
+                                        <button type="submit" class="btn-sm" style="background: #e74c3c; color: white; border: none; cursor: pointer; padding: 6px 12px; border-radius: 4px; font-size: 13px; white-space: nowrap;">
                                             <i class="fa-solid fa-trash"></i> Delete
                                         </button>
                                     </form>

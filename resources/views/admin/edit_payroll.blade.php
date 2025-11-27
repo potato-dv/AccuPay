@@ -59,29 +59,29 @@
             @method('PUT')
 
             <!-- Payroll Details -->
-            <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px;">
-                <h2 style="margin-top: 0; color: #0057a0;">Payroll Information</h2>
+            <div style="background: white; border: 1px solid #ddd; border-radius: 6px; padding: 20px; margin-bottom: 20px;">
+                <h2 style="margin: 0 0 15px 0; color: #333; font-size: 16px; border-bottom: 2px solid #0057a0; padding-bottom: 10px;">Payroll Information</h2>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div>
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #555;">Payroll Period *</label>
-                        <input type="text" name="payroll_period" value="{{ $payroll->payroll_period }}" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333; font-size: 13px;">Payroll Period *</label>
+                        <input type="text" name="payroll_period" value="{{ $payroll->payroll_period }}" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
                     </div>
                     <div>
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #555;">Payment Date *</label>
-                        <input type="date" name="payment_date" value="{{ $payroll->payment_date->format('Y-m-d') }}" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333; font-size: 13px;">Payment Date *</label>
+                        <input type="date" name="payment_date" value="{{ $payroll->payment_date->format('Y-m-d') }}" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
                     </div>
                     <div>
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #555;">Period Start *</label>
-                        <input type="date" name="period_start" value="{{ $payroll->period_start->format('Y-m-d') }}" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333; font-size: 13px;">Period Start *</label>
+                        <input type="date" name="period_start" value="{{ $payroll->period_start->format('Y-m-d') }}" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
                     </div>
                     <div>
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #555;">Period End *</label>
-                        <input type="date" name="period_end" value="{{ $payroll->period_end->format('Y-m-d') }}" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333; font-size: 13px;">Period End *</label>
+                        <input type="date" name="period_end" value="{{ $payroll->period_end->format('Y-m-d') }}" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
                     </div>
                     <div style="grid-column: 1 / -1;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #555;">Notes</label>
-                        <textarea name="notes" rows="3" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit;">{{ $payroll->notes }}</textarea>
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333; font-size: 13px;">Notes</label>
+                        <textarea name="notes" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; font-size: 13px;">{{ $payroll->notes }}</textarea>
                     </div>
                 </div>
             </div>
@@ -91,154 +91,172 @@
                 $totalGrossPay = $payroll->payslips->sum('gross_pay');
                 $totalDeductions = $payroll->payslips->sum('total_deductions');
                 $totalNetPay = $payroll->payslips->sum('net_pay');
+                $totalLoanDeductions = $payroll->payslips->sum('loan_deductions');
             @endphp
-            <div style="background: linear-gradient(135deg, #0057a0 0%, #0080d0 100%); padding: 25px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px;">
-                <h3 style="margin: 0 0 20px 0; color: white; font-size: 20px;">
+            <div style="background: white; border: 1px solid #ddd; border-radius: 6px; padding: 20px; margin-bottom: 20px;">
+                <h3 style="margin: 0 0 15px 0; color: #333; font-size: 16px; border-bottom: 2px solid #0057a0; padding-bottom: 10px;">
                     <i class="fa-solid fa-calculator"></i> Payroll Summary
                 </h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-                    <div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 8px; backdrop-filter: blur(10px);">
-                        <div style="color: rgba(255,255,255,0.9); font-size: 13px; margin-bottom: 8px;">Total Gross Pay</div>
-                        <div style="color: white; font-size: 28px; font-weight: bold;">₱{{ number_format($totalGrossPay, 2) }}</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div style="padding: 15px; background: #f8f9fa; border-left: 4px solid #0057a0; border-radius: 4px;">
+                        <div style="color: #666; font-size: 12px; margin-bottom: 5px;">Total Gross Pay</div>
+                        <div style="color: #333; font-size: 20px; font-weight: 600;">₱{{ number_format($totalGrossPay, 2) }}</div>
                     </div>
-                    <div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 8px; backdrop-filter: blur(10px);">
-                        <div style="color: rgba(255,255,255,0.9); font-size: 13px; margin-bottom: 8px;">Total Deductions</div>
-                        <div style="color: white; font-size: 28px; font-weight: bold;">₱{{ number_format($totalDeductions, 2) }}</div>
+                    <div style="padding: 15px; background: #f8f9fa; border-left: 4px solid #dc3545; border-radius: 4px;">
+                        <div style="color: #666; font-size: 12px; margin-bottom: 5px;">Total Deductions</div>
+                        <div style="color: #333; font-size: 20px; font-weight: 600;">₱{{ number_format($totalDeductions, 2) }}</div>
+                        @if($totalLoanDeductions > 0)
+                        <div style="color: #999; font-size: 11px; margin-top: 3px;">incl. ₱{{ number_format($totalLoanDeductions, 2) }} loans</div>
+                        @endif
                     </div>
-                    <div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 8px; backdrop-filter: blur(10px);">
-                        <div style="color: rgba(255,255,255,0.9); font-size: 13px; margin-bottom: 8px;">Total Net Pay</div>
-                        <div style="color: white; font-size: 28px; font-weight: bold;">₱{{ number_format($totalNetPay, 2) }}</div>
+                    <div style="padding: 15px; background: #f8f9fa; border-left: 4px solid #28a745; border-radius: 4px;">
+                        <div style="color: #666; font-size: 12px; margin-bottom: 5px;">Total Net Pay</div>
+                        <div style="color: #28a745; font-size: 20px; font-weight: 600;">₱{{ number_format($totalNetPay, 2) }}</div>
                     </div>
                 </div>
             </div>
 
             <!-- Employee Payslips -->
-            <h3 style="margin-bottom: 15px;">Employee Payslips</h3>
-            <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px;">
+            <h3 style="margin-bottom: 15px; color: #333;">Employee Payslips</h3>
+            <div style="background: white; border: 1px solid #ddd; border-radius: 6px; padding: 20px; margin-bottom: 20px;">
                 <div style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                         <thead>
-                            <tr style="background: #0057a0; color: white;">
-                                <th style="padding: 12px; text-align: left;">Employee</th>
-                                <th style="padding: 12px; text-align: right;">Hours</th>
-                                <th style="padding: 12px; text-align: right;">OT Hours</th>
-                                <th style="padding: 12px; text-align: right;">Basic Salary</th>
-                                <th style="padding: 12px; text-align: right;">OT Pay</th>
-                                <th style="padding: 12px; text-align: right;">Allowances</th>
-                                <th style="padding: 12px; text-align: right;">Bonuses</th>
-                                <th style="padding: 12px; text-align: right;">Gross Pay</th>
-                                <th style="padding: 12px; text-align: right;">SSS</th>
-                                <th style="padding: 12px; text-align: right;">PhilHealth</th>
-                                <th style="padding: 12px; text-align: right;">Pag-IBIG</th>
-                                <th style="padding: 12px; text-align: right;">Tax</th>
-                                <th style="padding: 12px; text-align: right;">Other Ded.</th>
-                                <th style="padding: 12px; text-align: right;">Net Pay</th>
+                            <tr style="background: #f8f9fa; border-bottom: 2px solid #ddd;">
+                                <th style="padding: 10px; text-align: left; font-weight: 600; color: #333;">Employee</th>
+                                <th style="padding: 10px; text-align: right; font-weight: 600; color: #333;">Hours</th>
+                                <th style="padding: 10px; text-align: right; font-weight: 600; color: #333;">OT Hrs</th>
+                                <th style="padding: 10px; text-align: right; font-weight: 600; color: #333;">Basic Salary</th>
+                                <th style="padding: 10px; text-align: right; font-weight: 600; color: #333;">OT Pay</th>
+                                <th style="padding: 10px; text-align: right; font-weight: 600; color: #333;">Allowances</th>
+                                <th style="padding: 10px; text-align: right; font-weight: 600; color: #333;">Bonuses</th>
+                                <th style="padding: 10px; text-align: right; font-weight: 600; color: #333; background: #e3f2fd;">Gross Pay</th>
+                                <th style="padding: 10px; text-align: right; font-weight: 600; color: #333;">SSS</th>
+                                <th style="padding: 10px; text-align: right; font-weight: 600; color: #333;">PhilHealth</th>
+                                <th style="padding: 10px; text-align: right; font-weight: 600; color: #333;">Pag-IBIG</th>
+                                <th style="padding: 10px; text-align: right; font-weight: 600; color: #333;">Tax</th>
+                                <th style="padding: 10px; text-align: right; font-weight: 600; color: #333;">Late Ded.</th>
+                                <th style="padding: 10px; text-align: right; font-weight: 600; color: #333;">Loan Ded.</th>
+                                <th style="padding: 10px; text-align: right; font-weight: 600; color: #333;">Other Ded.</th>
+                                <th style="padding: 10px; text-align: right; font-weight: 600; color: #333; background: #e8f5e9;">Net Pay</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($payroll->payslips as $payslip)
-                            <tr style="border-bottom: 1px solid #ddd;">
-                                <td style="padding: 12px;">
-                                    <strong>{{ $payslip->employee->employee_id }}</strong><br>
-                                    <small>{{ $payslip->employee->full_name }}</small>
+                            <tr style="border-bottom: 1px solid #eee;">
+                                <td style="padding: 10px;">
+                                    <div style="font-weight: 600; color: #333;">{{ $payslip->employee->employee_id }}</div>
+                                    <div style="font-size: 12px; color: #666;">{{ $payslip->employee->full_name }}</div>
                                 </td>
-                                <td style="padding: 12px;">
+                                <td style="padding: 10px;">
                                     <input type="number" 
                                            name="payslips[{{ $payslip->id }}][hours_worked]" 
                                            value="{{ $payslip->hours_worked }}" 
                                            step="0.01" 
                                            min="0" 
-                                           style="width: 80px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; text-align: right;">
+                                           style="width: 70px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: right; font-size: 13px;">
                                 </td>
-                                <td style="padding: 12px;">
+                                <td style="padding: 10px;">
                                     <input type="number" 
                                            name="payslips[{{ $payslip->id }}][overtime_hours]" 
                                            value="{{ $payslip->overtime_hours }}" 
                                            step="0.01" 
                                            min="0" 
-                                           style="width: 80px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; text-align: right;">
+                                           style="width: 70px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: right; font-size: 13px;">
                                 </td>
-                                <td style="padding: 12px;">
+                                <td style="padding: 10px;">
                                     <input type="number" 
                                            name="payslips[{{ $payslip->id }}][basic_salary]" 
                                            value="{{ $payslip->basic_salary }}" 
                                            step="0.01" 
                                            min="0" 
-                                           style="width: 100px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; text-align: right;">
+                                           style="width: 90px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: right; font-size: 13px;">
                                 </td>
-                                <td style="padding: 12px;">
+                                <td style="padding: 10px;">
                                     <input type="number" 
                                            name="payslips[{{ $payslip->id }}][overtime_pay]" 
                                            value="{{ $payslip->overtime_pay }}" 
                                            step="0.01" 
                                            min="0" 
-                                           style="width: 100px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; text-align: right;">
+                                           style="width: 90px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: right; font-size: 13px;">
                                 </td>
-                                <td style="padding: 12px;">
+                                <td style="padding: 10px;">
                                     <input type="number" 
                                            name="payslips[{{ $payslip->id }}][allowances]" 
                                            value="{{ $payslip->allowances }}" 
                                            step="0.01" 
                                            min="0" 
-                                           style="width: 100px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; text-align: right;">
+                                           style="width: 90px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: right; font-size: 13px;">
                                 </td>
-                                <td style="padding: 12px;">
+                                <td style="padding: 10px;">
                                     <input type="number" 
                                            name="payslips[{{ $payslip->id }}][bonuses]" 
                                            value="{{ $payslip->bonuses }}" 
                                            step="0.01" 
                                            min="0" 
-                                           style="width: 100px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; text-align: right;">
+                                           style="width: 90px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: right; font-size: 13px;">
                                 </td>
-                                <td style="padding: 12px; background: #f0f8ff;">
+                                <td style="padding: 10px; background: #e3f2fd;">
                                     <strong style="color: #0057a0;">₱{{ number_format($payslip->gross_pay, 2) }}</strong>
                                 </td>
-                                <td style="padding: 12px;">
+                                <td style="padding: 10px;">
                                     <input type="number" 
-                                           class="payslip-input" 
                                            name="payslips[{{ $payslip->id }}][sss]" 
                                            value="{{ $payslip->sss }}" 
                                            step="0.01" 
                                            min="0" 
-                                           style="width: 100px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; text-align: right;">
+                                           style="width: 90px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: right; font-size: 13px;">
                                 </td>
-                                <td style="padding: 12px;">
+                                <td style="padding: 10px;">
                                     <input type="number" 
-                                           class="payslip-input" 
                                            name="payslips[{{ $payslip->id }}][philhealth]" 
                                            value="{{ $payslip->philhealth }}" 
                                            step="0.01" 
                                            min="0" 
-                                           style="width: 100px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; text-align: right;">
+                                           style="width: 90px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: right; font-size: 13px;">
                                 </td>
-                                <td style="padding: 12px;">
+                                <td style="padding: 10px;">
                                     <input type="number" 
-                                           class="payslip-input" 
                                            name="payslips[{{ $payslip->id }}][pagibig]" 
                                            value="{{ $payslip->pagibig }}" 
                                            step="0.01" 
                                            min="0" 
-                                           style="width: 100px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; text-align: right;">
+                                           style="width: 90px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: right; font-size: 13px;">
                                 </td>
-                                <td style="padding: 12px;">
+                                <td style="padding: 10px;">
                                     <input type="number" 
-                                           class="payslip-input" 
                                            name="payslips[{{ $payslip->id }}][tax]" 
                                            value="{{ $payslip->tax }}" 
                                            step="0.01" 
                                            min="0" 
-                                           style="width: 100px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; text-align: right;">
+                                           style="width: 90px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: right; font-size: 13px;">
                                 </td>
-                                <td style="padding: 12px;">
+                                <td style="padding: 10px;">
                                     <input type="number" 
-                                           class="payslip-input" 
+                                           name="payslips[{{ $payslip->id }}][late_deduction]" 
+                                           value="{{ $payslip->late_deduction ?? 0 }}" 
+                                           step="0.01" 
+                                           min="0" 
+                                           style="width: 90px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: right; font-size: 13px;">
+                                </td>
+                                <td style="padding: 10px;">
+                                    <input type="number" 
+                                           name="payslips[{{ $payslip->id }}][loan_deductions]" 
+                                           value="{{ $payslip->loan_deductions ?? 0 }}" 
+                                           step="0.01" 
+                                           min="0" 
+                                           style="width: 90px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: right; font-size: 13px;"
+                                           title="Employee active loans: {{ $payslip->employee->activeLoans()->count() }}">
+                                </td>
+                                <td style="padding: 10px;">
+                                    <input type="number" 
                                            name="payslips[{{ $payslip->id }}][other_deductions]" 
                                            value="{{ $payslip->other_deductions }}" 
                                            step="0.01" 
                                            min="0" 
-                                           style="width: 100px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; text-align: right;">
+                                           style="width: 90px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: right; font-size: 13px;">
                                 </td>
-                                <td style="padding: 12px; background: #e8f5e9;">
+                                <td style="padding: 10px; background: #e8f5e9;">
                                     <strong style="color: #28a745;">₱{{ number_format($payslip->net_pay, 2) }}</strong>
                                 </td>
                             </tr>
@@ -246,9 +264,9 @@
                         </tbody>
                     </table>
                 </div>
-                <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
-                    <p style="margin: 0; color: #666; font-size: 14px;">
-                        <i class="fa-solid fa-info-circle"></i> <strong>Note:</strong> Gross Pay and Net Pay will be calculated when you save. Change any earnings or deductions and click Save Changes.
+                <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-left: 4px solid #0057a0; border-radius: 4px;">
+                    <p style="margin: 0; color: #666; font-size: 13px;">
+                        <i class="fa-solid fa-info-circle"></i> <strong>Note:</strong> Gross Pay and Net Pay will be recalculated when you save. Edit earnings or deductions and click Save Changes.
                     </p>
                 </div>
             </div>

@@ -51,6 +51,16 @@ class Employee extends Model
         return $this->hasMany(Payslip::class);
     }
 
+    public function loans()
+    {
+        return $this->hasMany(Loan::class);
+    }
+
+    public function activeLoans()
+    {
+        return $this->hasMany(Loan::class)->where('status', 'approved')->where('remaining_balance', '>', 0);
+    }
+
     public function getFullNameAttribute()
     {
         $middle = $this->middle_name ? ' ' . $this->middle_name . ' ' : ' ';

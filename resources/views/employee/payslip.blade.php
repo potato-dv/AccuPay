@@ -44,6 +44,39 @@
     <!-- MAIN CONTENT -->
     <main class="main-content">
         <div style="max-width: 1400px; margin: 0 auto; padding: 20px;">
+            <!-- Loan Summary Card -->
+            @if($activeLoans->count() > 0)
+            <div style="background: white; border: 1px solid #ddd; border-left: 4px solid #dc3545; border-radius: 8px; margin-bottom: 20px; padding: 20px;">
+                <h3 style="margin: 0 0 15px 0; color: #333; font-size: 16px;">
+                    <i class="fas fa-hand-holding-dollar"></i> Active Loan Summary
+                </h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                    @foreach($activeLoans as $loan)
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 3px solid #dc3545;">
+                        <div style="font-size: 12px; color: #666; margin-bottom: 5px;">{{ $loan->purpose }}</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 13px; color: #666;">Balance:</span>
+                            <span style="font-weight: 700; font-size: 15px; color: #dc3545;">₱{{ number_format($loan->remaining_balance, 2) }}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 12px; color: #666;">Monthly Deduction:</span>
+                            <span style="font-weight: 600; font-size: 13px;">₱{{ number_format($loan->monthly_deduction, 2) }}</span>
+                        </div>
+                        <div style="background: #e9ecef; height: 6px; border-radius: 3px; overflow: hidden;">
+                            <div style="background: #28a745; height: 100%; width: {{ $loan->progress_percentage }}%;"></div>
+                        </div>
+                        <div style="font-size: 11px; color: #666; margin-top: 5px; text-align: right;">{{ number_format($loan->progress_percentage, 1) }}% paid</div>
+                    </div>
+                    @endforeach
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px; border-radius: 6px; color: white;">
+                        <div style="font-size: 12px; margin-bottom: 8px; opacity: 0.9;">Total Outstanding Balance</div>
+                        <div style="font-weight: 700; font-size: 20px; margin-bottom: 10px;">₱{{ number_format($totalLoanBalance, 2) }}</div>
+                        <div style="font-size: 12px; opacity: 0.9;">Monthly Deduction: <strong>₱{{ number_format($totalMonthlyDeduction, 2) }}</strong></div>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             <h2 style="margin-bottom: 20px; color: #333;">Payslip Summary</h2>
             
             @forelse($payslips as $payslip)
@@ -89,7 +122,7 @@
 
                 <!-- Payslip Details -->
                 <div id="payslip-{{ $payslip->id }}" style="display: none; padding: 20px; border-top: 1px solid #ddd;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                         <!-- Attendance Summary -->
                         <div>
                             <h4 style="margin: 0 0 15px 0; color: #333; font-size: 14px; border-bottom: 2px solid #0057a0; padding-bottom: 8px;">
@@ -113,6 +146,33 @@
                                     <td style="padding: 8px 0; text-align: right; font-weight: 600;">{{ number_format($payslip->hours_worked, 2) }} hrs</td>
                                 </tr>
                             </table>
+                        </div>
+
+                        <!-- Loan Information -->
+                        <div>
+                            <h4 style="margin: 0 0 15px 0; color: #333; font-size: 14px; border-bottom: 2px solid #0057a0; padding-bottom: 8px;">
+                                <i class="fas fa-hand-holding-dollar"></i> Loan Deductions
+                            </h4>
+                            @if($payslip->loan_deductions > 0)
+                                <table style="width: 100%; font-size: 13px;">
+                                    <tr style="border-bottom: 1px solid #eee;">
+                                        <td style="padding: 8px 0; color: #666;">This Period</td>
+                                        <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #dc3545;">₱{{ number_format($payslip->loan_deductions, 2) }}</td>
+                                    </tr>
+                                    @if($activeLoans->count() > 0)
+                                    <tr style="border-bottom: 1px solid #eee;">
+                                        <td style="padding: 8px 0; color: #666;">Remaining Balance</td>
+                                        <td style="padding: 8px 0; text-align: right; font-weight: 600;">₱{{ number_format($totalLoanBalance, 2) }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #666;">Active Loans</td>
+                                        <td style="padding: 8px 0; text-align: right; font-weight: 600;">{{ $activeLoans->count() }}</td>
+                                    </tr>
+                                    @endif
+                                </table>
+                            @else
+                                <p style="color: #999; font-size: 13px; padding: 10px 0;">No loan deductions this period</p>
+                            @endif
                         </div>
 
                         <!-- Earnings & Deductions -->
@@ -142,17 +202,35 @@
                                     <td style="padding: 8px 0; text-align: right; font-weight: 700;">₱{{ number_format($payslip->gross_pay, 2) }}</td>
                                 </tr>
                                 <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding: 8px 0; color: #666;">SSS</td>
+                                    <td style="padding: 8px 0; color: #666;">SSS ({{ number_format($payslip->sss_rate ?? 4.5, 1) }}%)</td>
                                     <td style="padding: 8px 0; text-align: right; font-weight: 600;">₱{{ number_format($payslip->sss, 2) }}</td>
                                 </tr>
                                 <tr style="border-bottom: 1px solid #eee;">
-                                    <td style="padding: 8px 0; color: #666;">PhilHealth</td>
+                                    <td style="padding: 8px 0; color: #666;">PhilHealth ({{ number_format($payslip->philhealth_rate ?? 2.0, 1) }}%)</td>
                                     <td style="padding: 8px 0; text-align: right; font-weight: 600;">₱{{ number_format($payslip->philhealth, 2) }}</td>
                                 </tr>
-                                <tr style="border-bottom: 2px solid #ddd;">
-                                    <td style="padding: 8px 0; color: #666;">Pag-IBIG</td>
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px 0; color: #666;">Pag-IBIG ({{ number_format($payslip->pagibig_rate ?? 2.0, 1) }}%)</td>
                                     <td style="padding: 8px 0; text-align: right; font-weight: 600;">₱{{ number_format($payslip->pagibig, 2) }}</td>
                                 </tr>
+                                @if(isset($payslip->tax) && $payslip->tax > 0)
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px 0; color: #666;">Tax ({{ number_format($payslip->tax_rate ?? 0, 1) }}%)</td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: 600;">₱{{ number_format($payslip->tax, 2) }}</td>
+                                </tr>
+                                @endif
+                                @if(isset($payslip->late_deduction) && $payslip->late_deduction > 0)
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px 0; color: #666;">Late Deduction</td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #dc3545;">₱{{ number_format($payslip->late_deduction, 2) }}</td>
+                                </tr>
+                                @endif
+                                @if(isset($payslip->loan_deductions) && $payslip->loan_deductions > 0)
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px 0; color: #666;">Loan Deduction</td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #dc3545;">₱{{ number_format($payslip->loan_deductions, 2) }}</td>
+                                </tr>
+                                @endif
                                 <tr style="border-bottom: 2px solid #ddd;">
                                     <td style="padding: 8px 0; color: #333; font-weight: 700;">Total Deductions</td>
                                     <td style="padding: 8px 0; text-align: right; font-weight: 700; color: #dc3545;">₱{{ number_format($payslip->total_deductions, 2) }}</td>

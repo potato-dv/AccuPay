@@ -128,7 +128,7 @@
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
             <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <div style="font-size: 13px; color: #666; margin-bottom: 5px;">Records</div>
-                <div style="font-size: 24px; font-weight: bold;">{{ $reportData->total() }}</div>
+                <div style="font-size: 24px; font-weight: bold;">{{ $reportData->count() }}</div>
             </div>
             <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <div style="font-size: 13px; color: #666; margin-bottom: 5px;">Gross Pay</div>
@@ -166,7 +166,7 @@
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
             <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <div style="font-size: 13px; color: #666; margin-bottom: 5px;">Records</div>
-                <div style="font-size: 24px; font-weight: bold;">{{ $reportData->total() }}</div>
+                <div style="font-size: 24px; font-weight: bold;">{{ $reportData->count() }}</div>
             </div>
             @if($reportType == 'attendance')
             <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
@@ -200,7 +200,7 @@
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
             <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <div style="font-size: 13px; color: #666; margin-bottom: 5px;">Total</div>
-                <div style="font-size: 24px; font-weight: bold;">{{ $reportData->total() }}</div>
+                <div style="font-size: 24px; font-weight: bold;">{{ $reportData->count() }}</div>
             </div>
             <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <div style="font-size: 13px; color: #666; margin-bottom: 5px;">Approved</div>
@@ -219,7 +219,7 @@
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
             <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <div style="font-size: 13px; color: #666; margin-bottom: 5px;">Total</div>
-                <div style="font-size: 24px; font-weight: bold;">{{ $reportData->total() }}</div>
+                <div style="font-size: 24px; font-weight: bold;">{{ $reportData->count() }}</div>
             </div>
             <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <div style="font-size: 13px; color: #666; margin-bottom: 5px;">Active</div>

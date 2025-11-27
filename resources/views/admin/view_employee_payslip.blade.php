@@ -64,9 +64,63 @@
                     </div>
                 </div>
 
+                <!-- Work Schedule Information -->
+                @if($payslip->employee->workSchedule)
+                <div style="padding: 15px 20px; background: #fff8e1; border-bottom: 1px solid #ddd;">
+                    <h4 style="margin: 0 0 12px 0; color: #333; font-size: 14px;">
+                        <i class="fas fa-clock"></i> Work Schedule: {{ $payslip->employee->workSchedule->schedule_name }}
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; font-size: 13px;">
+                        <div>
+                            <div style="color: #666; margin-bottom: 5px;">Working Days</div>
+                            <div style="font-weight: 600; color: #333;">
+                                {{ implode(', ', array_map(fn($d) => substr($d, 0, 3), $payslip->employee->workSchedule->working_days)) }}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="color: #666; margin-bottom: 5px;">Shift Hours</div>
+                            <div style="font-weight: 600; color: #333;">
+                                {{ date('h:i A', strtotime($payslip->employee->workSchedule->shift_start)) }} - 
+                                {{ date('h:i A', strtotime($payslip->employee->workSchedule->shift_end)) }}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="color: #666; margin-bottom: 5px;">Daily Hours</div>
+                            <div style="font-weight: 600; color: #333;">{{ number_format($payslip->employee->workSchedule->daily_hours, 1) }} hours/day</div>
+                        </div>
+                        <div>
+                            <div style="color: #666; margin-bottom: 5px;">Weekly Hours</div>
+                            <div style="font-weight: 600; color: #333;">{{ number_format($payslip->employee->workSchedule->weekly_hours, 1) }} hours/week</div>
+                        </div>
+                        @if($payslip->employee->workSchedule->break_start && $payslip->employee->workSchedule->break_end)
+                        <div>
+                            <div style="color: #666; margin-bottom: 5px;">Break Time</div>
+                            <div style="font-weight: 600; color: #333;">
+                                {{ date('h:i A', strtotime($payslip->employee->workSchedule->break_start)) }} - 
+                                {{ date('h:i A', strtotime($payslip->employee->workSchedule->break_end)) }}
+                                <span style="font-size: 11px; color: #666;">({{ $payslip->employee->workSchedule->break_paid ? 'Paid' : 'Unpaid' }})</span>
+                            </div>
+                        </div>
+                        @endif
+                        @if($payslip->employee->workSchedule->overtime_allowed)
+                        <div>
+                            <div style="color: #666; margin-bottom: 5px;">Overtime Rate</div>
+                            <div style="font-weight: 600; color: #333;">{{ number_format($payslip->employee->workSchedule->overtime_rate_multiplier, 2) }}x</div>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+                @else
+                <div style="padding: 15px 20px; background: #fff3cd; border-bottom: 1px solid #ddd;">
+                    <div style="color: #856404; font-size: 13px;">
+                        <i class="fas fa-exclamation-triangle"></i> No work schedule assigned to this employee
+                    </div>
+                </div>
+                @endif
+
                 <!-- Payslip Details -->
                 <div style="padding: 20px;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                         <!-- Attendance Summary -->
                         <div>
                             <h4 style="margin: 0 0 15px 0; color: #333; font-size: 14px; border-bottom: 2px solid #0057a0; padding-bottom: 8px;">
@@ -90,6 +144,33 @@
                                     <td style="padding: 8px 0; text-align: right; font-weight: 600;">{{ number_format($payslip->hours_worked, 2) }} hrs</td>
                                 </tr>
                             </table>
+                        </div>
+
+                        <!-- Loan Information -->
+                        <div>
+                            <h4 style="margin: 0 0 15px 0; color: #333; font-size: 14px; border-bottom: 2px solid #0057a0; padding-bottom: 8px;">
+                                <i class="fas fa-hand-holding-dollar"></i> Active Loans
+                            </h4>
+                            @if($activeLoans->count() > 0)
+                                <table style="width: 100%; font-size: 13px;">
+                                    @foreach($activeLoans as $loan)
+                                    <tr style="border-bottom: 1px solid #eee;">
+                                        <td style="padding: 8px 0; color: #666;">{{ $loop->iteration }}. {{ Str::limit($loan->purpose, 20) }}</td>
+                                        <td style="padding: 8px 0; text-align: right; font-weight: 600;">₱{{ number_format($loan->remaining_balance, 2) }}</td>
+                                    </tr>
+                                    @endforeach
+                                    <tr style="border-top: 2px solid #ddd;">
+                                        <td style="padding: 8px 0; color: #333; font-weight: 700;">Total Balance</td>
+                                        <td style="padding: 8px 0; text-align: right; font-weight: 700; color: #dc3545;">₱{{ number_format($totalLoanBalance, 2) }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #666;">Monthly Deduction</td>
+                                        <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #dc3545;">₱{{ number_format($totalMonthlyDeduction, 2) }}</td>
+                                    </tr>
+                                </table>
+                            @else
+                                <p style="color: #999; font-size: 13px; padding: 10px 0;">No active loans</p>
+                            @endif
                         </div>
 
                         <!-- Earnings & Deductions -->

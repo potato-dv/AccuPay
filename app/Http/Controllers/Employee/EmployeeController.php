@@ -181,6 +181,15 @@ class EmployeeController extends Controller
             $employee->update(['user_id' => $user->id]);
         }
         
+        // Get active loans for this employee
+        $activeLoans = Loan::where('employee_id', $employee->id)
+            ->where('status', 'approved')
+            ->where('remaining_balance', '>', 0)
+            ->get();
+        
+        $totalLoanBalance = $activeLoans->sum('remaining_balance');
+        $totalMonthlyDeduction = $activeLoans->sum('monthly_deduction');
+        
         // Only show payslips from approved payrolls
         $payslips = Payslip::with(['payroll'])
             ->where('employee_id', $employee->id)
@@ -236,7 +245,7 @@ class EmployeeController extends Controller
             $attendanceByPayslip[$payslip->id] = $allDates;
         }
 
-        return view('employee.payslip', compact('employee', 'payslips', 'attendanceByPayslip'));
+        return view('employee.payslip', compact('employee', 'payslips', 'attendanceByPayslip', 'activeLoans', 'totalLoanBalance', 'totalMonthlyDeduction'));
     }
 
     public function reportSupport()

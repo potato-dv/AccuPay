@@ -638,10 +638,12 @@ class AdminController extends Controller
                 $sss = floatval($data['sss'] ?? 0);
                 $philhealth = floatval($data['philhealth'] ?? 0);
                 $pagibig = floatval($data['pagibig'] ?? 0);
+                $lateDeduction = floatval($data['late_deduction'] ?? 0);
+                $loanDeductions = floatval($data['loan_deductions'] ?? 0);
                 $otherDeductions = floatval($data['other_deductions'] ?? 0);
                 
                 // Calculate Total Deductions
-                $totalDeductionsEmp = $tax + $sss + $philhealth + $pagibig + $otherDeductions;
+                $totalDeductionsEmp = $tax + $sss + $philhealth + $pagibig + $lateDeduction + $loanDeductions + $otherDeductions;
                 
                 // Calculate Net Pay
                 $netPay = $grossPay - $totalDeductionsEmp;
@@ -657,6 +659,8 @@ class AdminController extends Controller
                     'sss' => $sss,
                     'philhealth' => $philhealth,
                     'pagibig' => $pagibig,
+                    'late_deduction' => $lateDeduction,
+                    'loan_deductions' => $loanDeductions,
                     'other_deductions' => $otherDeductions,
                     'total_deductions' => $totalDeductionsEmp,
                     'net_pay' => $netPay,
@@ -689,6 +693,15 @@ class AdminController extends Controller
     public function viewEmployeePayslip($id)
     {
         $payslip = Payslip::with(['employee', 'payroll'])->findOrFail($id);
+        
+        // Get active loans for this employee
+        $activeLoans = Loan::where('employee_id', $payslip->employee_id)
+            ->where('status', 'approved')
+            ->where('remaining_balance', '>', 0)
+            ->get();
+        
+        $totalLoanBalance = $activeLoans->sum('remaining_balance');
+        $totalMonthlyDeduction = $activeLoans->sum('monthly_deduction');
         
         // Get detailed attendance records for this payroll period
         $attendanceRecords = Attendance::where('employee_id', $payslip->employee_id)
@@ -736,7 +749,7 @@ class AdminController extends Controller
             $currentDate->addDay();
         }
         
-        return view('admin.view_employee_payslip', compact('payslip', 'allDates'));
+        return view('admin.view_employee_payslip', compact('payslip', 'allDates', 'activeLoans', 'totalLoanBalance', 'totalMonthlyDeduction'));
     }
 
     public function deletePayroll($id)
@@ -1023,6 +1036,34 @@ class AdminController extends Controller
             }
             
             $reportData = $query->latest()->get();
+            
+        } elseif ($reportType === 'loans') {
+            $query = Loan::with('employee');
+            
+            if ($dateFrom && $dateTo) {
+                $query->whereBetween('created_at', [$dateFrom, $dateTo]);
+            }
+            
+            if ($employeeId) {
+                $query->where('employee_id', $employeeId);
+            }
+            
+            if ($exportFormat) {
+                $reportData = $query->latest()->get();
+                $summary = [
+                    'total_loans' => $reportData->count(),
+                    'total_amount' => $reportData->sum('amount'),
+                    'total_paid' => $reportData->sum('paid_amount'),
+                    'total_remaining' => $reportData->sum('remaining_balance'),
+                    'approved' => $reportData->where('status', 'approved')->count(),
+                    'pending' => $reportData->where('status', 'pending')->count(),
+                    'rejected' => $reportData->where('status', 'rejected')->count(),
+                    'completed' => $reportData->where('status', 'completed')->count()
+                ];
+                return $this->exportReport($reportType, $reportData, $summary, $exportFormat, $dateFrom, $dateTo);
+            }
+            
+            $reportData = $query->latest()->paginate(20);
             
         } elseif ($reportType === 'employee') {
             $query = Employee::query();

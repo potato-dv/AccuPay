@@ -143,6 +143,12 @@
                                     <td style="padding: 8px 0; color: #666;">Total Hours Worked</td>
                                     <td style="padding: 8px 0; text-align: right; font-weight: 600;">{{ number_format($payslip->hours_worked, 2) }} hrs</td>
                                 </tr>
+                                @if($payslip->undertime_hours > 0)
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px 0; color: #666;">└ Undertime Hours</td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #dc3545;">{{ number_format($payslip->undertime_hours, 2) }} hrs</td>
+                                </tr>
+                                @endif
                             </table>
                         </div>
 
@@ -215,10 +221,22 @@
                                     <td style="padding: 8px 0; color: #666;">Tax ({{ number_format($payslip->tax_rate ?? 0, 1) }}%)</td>
                                     <td style="padding: 8px 0; text-align: right; font-weight: 600;">₱{{ number_format($payslip->tax, 2) }}</td>
                                 </tr>
+                                @if($payslip->absence_deduction > 0)
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px 0; color: #666;">Absence Deduction ({{ $payslip->days_absent ?? 0 }} days)</td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #dc3545;">₱{{ number_format($payslip->absence_deduction, 2) }}</td>
+                                </tr>
+                                @endif
                                 @if($payslip->late_deduction > 0)
                                 <tr style="border-bottom: 1px solid #eee;">
                                     <td style="padding: 8px 0; color: #666;">Late Deduction</td>
                                     <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #dc3545;">₱{{ number_format($payslip->late_deduction, 2) }}</td>
+                                </tr>
+                                @endif
+                                @if($payslip->undertime_deduction > 0)
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding: 8px 0; color: #666;">Undertime Deduction ({{ number_format($payslip->undertime_hours, 2) }} hrs)</td>
+                                    <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #dc3545;">₱{{ number_format($payslip->undertime_deduction, 2) }}</td>
                                 </tr>
                                 @endif
                                 @if($payslip->loan_deductions > 0)

@@ -25,7 +25,7 @@
             <li><a href="{{ route('admin.leave') }}"><i class="fa-solid fa-calendar-check"></i> <span class="menu-text">Leave Requests</span></a></li>
             <li><a href="{{ route('admin.loans') }}"><i class="fa-solid fa-hand-holding-dollar"></i> <span class="menu-text">Loans</span></a></li>
             <li class="active"><a href="{{ route('admin.reports') }}"><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Reports</span></a></li>
-            <li><a href="{{ route('admin.support.reports') }}"><i class="fa-solid fa-headset"></i> <span class="menu-text">Support Tickets</span></a></li>
+            <li><a href="{{ route('admin.support.reports') }}"><i class="fa-solid fa-headset"></i> <span class="menu-text">Help Desk</span></a></li>
             <li><a href="{{ route('admin.users') }}"><i class="fa-solid fa-users-gear"></i> <span class="menu-text">User Accounts</span></a></li>
             <li><a href="{{ route('admin.settings') }}"><i class="fa-solid fa-gear"></i> <span class="menu-text">Settings</span></a></li>
         </ul>
@@ -72,6 +72,9 @@
                                 <option value="employee" {{ $reportType == 'employee' ? 'selected' : '' }}>Employee List</option>
                                 <option value="employee_compensation" {{ $reportType == 'employee_compensation' ? 'selected' : '' }}>Compensation</option>
                             </optgroup>
+                            <optgroup label="System">
+                                <option value="activity_log" {{ $reportType == 'activity_log' ? 'selected' : '' }}>Activity Log / Audit Trail</option>
+                            </optgroup>
                         </select>
                     </div>
                     <div>
@@ -83,14 +86,24 @@
                         <input type="date" name="date_to" value="{{ $dateTo }}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
                     </div>
                     <div>
-                        <label style="display: block; margin-bottom: 5px; font-size: 14px;">Employee (Optional)</label>
-                        <select name="employee_id" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
-                            <option value="">All Employees</option>
-                            @foreach($employees as $emp)
-                                <option value="{{ $emp->id }}" {{ $employeeId == $emp->id ? 'selected' : '' }}>
-                                    {{ $emp->employee_id }} - {{ $emp->first_name }} {{ $emp->last_name }}
-                                </option>
-                            @endforeach
+                        <label style="display: block; margin-bottom: 5px; font-size: 14px;">
+                            <span id="filter-label">{{ $reportType == 'activity_log' ? 'User (Optional)' : 'Employee (Optional)' }}</span>
+                        </label>
+                        <select name="employee_id" id="user-filter" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                            <option value="">All</option>
+                            @if($reportType == 'activity_log')
+                                @foreach($users as $user)
+                                    <option value="{{ $user->id }}" {{ $employeeId == $user->id ? 'selected' : '' }}>
+                                        {{ $user->name }} ({{ ucfirst($user->role) }}) - {{ $user->email }}
+                                    </option>
+                                @endforeach
+                            @else
+                                @foreach($employees as $emp)
+                                    <option value="{{ $emp->id }}" {{ $employeeId == $emp->id ? 'selected' : '' }}>
+                                        {{ $emp->employee_id }} - {{ $emp->first_name }} {{ $emp->last_name }}
+                                    </option>
+                                @endforeach
+                            @endif
                         </select>
                     </div>
                     <div style="display: flex; align-items: flex-end;">
@@ -115,6 +128,7 @@
                 @elseif($reportType == 'leave_balance') Leave Balance Report
                 @elseif($reportType == 'employee') Employee Master List
                 @elseif($reportType == 'employee_compensation') Compensation Report
+                @elseif($reportType == 'activity_log') Activity Log / Audit Trail
                 @endif
             </h2>
             <a href="{{ route('admin.reports', array_merge(request()->all(), ['export' => 'csv'])) }}" 
@@ -249,10 +263,19 @@
                         <th style="padding: 12px; text-align: right; font-size: 13px;">Basic</th>
                         @if($reportType == 'payroll_detailed')
                         <th style="padding: 12px; text-align: right; font-size: 13px;">Allowances</th>
-                        <th style="padding: 12px; text-align: right; font-size: 13px;">OT</th>
-                        @endif
+                        <th style="padding: 12px; text-align: right; font-size: 13px;">OT Pay</th>
+                        <th style="padding: 12px; text-align: right; font-size: 13px;">Gross</th>
+                        <th style="padding: 12px; text-align: right; font-size: 13px;">SSS</th>
+                        <th style="padding: 12px; text-align: right; font-size: 13px;">PhilHealth</th>
+                        <th style="padding: 12px; text-align: right; font-size: 13px;">Pag-IBIG</th>
+                        <th style="padding: 12px; text-align: right; font-size: 13px;">Tax</th>
+                        <th style="padding: 12px; text-align: right; font-size: 13px;">Loan</th>
+                        <th style="padding: 12px; text-align: right; font-size: 13px;">Absence</th>
+                        <th style="padding: 12px; text-align: right; font-size: 13px;">Total Deduct</th>
+                        @else
                         <th style="padding: 12px; text-align: right; font-size: 13px;">Gross</th>
                         <th style="padding: 12px; text-align: right; font-size: 13px;">Deductions</th>
+                        @endif
                         <th style="padding: 12px; text-align: right; font-size: 13px; font-weight: 600;">Net Pay</th>
                     </tr>
                 </thead>
@@ -266,14 +289,23 @@
                         @if($reportType == 'payroll_detailed')
                         <td style="padding: 12px; text-align: right; font-size: 13px;">₱{{ number_format($payslip->allowances, 2) }}</td>
                         <td style="padding: 12px; text-align: right; font-size: 13px;">₱{{ number_format($payslip->overtime_pay, 2) }}</td>
-                        @endif
+                        <td style="padding: 12px; text-align: right; font-size: 13px; font-weight: 600;">₱{{ number_format($payslip->gross_pay, 2) }}</td>
+                        <td style="padding: 12px; text-align: right; font-size: 13px; color: #dc3545;">₱{{ number_format($payslip->sss, 2) }}</td>
+                        <td style="padding: 12px; text-align: right; font-size: 13px; color: #dc3545;">₱{{ number_format($payslip->philhealth, 2) }}</td>
+                        <td style="padding: 12px; text-align: right; font-size: 13px; color: #dc3545;">₱{{ number_format($payslip->pagibig, 2) }}</td>
+                        <td style="padding: 12px; text-align: right; font-size: 13px; color: #dc3545;">₱{{ number_format($payslip->tax, 2) }}</td>
+                        <td style="padding: 12px; text-align: right; font-size: 13px; color: #dc3545;">₱{{ number_format($payslip->loan_deduction, 2) }}</td>
+                        <td style="padding: 12px; text-align: right; font-size: 13px; color: #dc3545;">₱{{ number_format($payslip->absence_deduction, 2) }}</td>
+                        <td style="padding: 12px; text-align: right; font-size: 13px; color: #dc3545; font-weight: 600;">₱{{ number_format($payslip->total_deductions, 2) }}</td>
+                        @else
                         <td style="padding: 12px; text-align: right; font-size: 13px;">₱{{ number_format($payslip->gross_pay, 2) }}</td>
                         <td style="padding: 12px; text-align: right; font-size: 13px; color: #dc3545;">₱{{ number_format($payslip->total_deductions, 2) }}</td>
-                        <td style="padding: 12px; text-align: right; font-size: 13px; font-weight: 600;">₱{{ number_format($payslip->net_pay, 2) }}</td>
+                        @endif
+                        <td style="padding: 12px; text-align: right; font-size: 13px; font-weight: 600; color: #28a745;">₱{{ number_format($payslip->net_pay, 2) }}</td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="{{ $reportType == 'payroll_detailed' ? '9' : '7' }}" style="text-align: center; padding: 40px; color: #6c757d;">No data found</td>
+                        <td colspan="{{ $reportType == 'payroll_detailed' ? '15' : '7' }}" style="text-align: center; padding: 40px; color: #6c757d;">No data found</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -516,10 +548,62 @@
                     @endforelse
                 </tbody>
             </table>
+
+            @elseif($reportType == 'activity_log')
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                        <th style="padding: 12px; text-align: left; font-size: 13px;">Date & Time</th>
+                        <th style="padding: 12px; text-align: left; font-size: 13px;">User</th>
+                        <th style="padding: 12px; text-align: left; font-size: 13px;">Module</th>
+                        <th style="padding: 12px; text-align: left; font-size: 13px;">Action</th>
+                        <th style="padding: 12px; text-align: left; font-size: 13px;">Description</th>
+                        <th style="padding: 12px; text-align: left; font-size: 13px;">IP Address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($reportData as $log)
+                    <tr style="border-bottom: 1px solid #dee2e6;">
+                        <td style="padding: 12px; font-size: 13px;">
+                            {{ $log->created_at->format('M d, Y') }}<br>
+                            <small style="color: #6c757d;">{{ $log->created_at->format('h:i A') }}</small>
+                        </td>
+                        <td style="padding: 12px; font-size: 13px;">
+                            <strong>{{ $log->user->name ?? 'N/A' }}</strong>
+                            <span style="padding: 2px 6px; background: {{ $log->user->role == 'admin' ? '#ffeaa7' : '#74b9ff' }}; color: #2d3436; border-radius: 3px; font-size: 11px; margin-left: 5px;">
+                                {{ ucfirst($log->user->role ?? 'N/A') }}
+                            </span>
+                            <br>
+                            <small style="color: #6c757d;">{{ $log->user->email ?? '' }}</small>
+                        </td>
+                        <td style="padding: 12px; font-size: 13px;">
+                            <span style="padding: 4px 8px; background: #e7f3ff; color: #004085; border-radius: 4px; font-size: 12px;">
+                                {{ ucfirst($log->module) }}
+                            </span>
+                        </td>
+                        <td style="padding: 12px; font-size: 13px;">
+                            <span style="padding: 4px 8px; background: 
+                                @if($log->action == 'create') #d4edda; color: #155724
+                                @elseif($log->action == 'delete') #f8d7da; color: #721c24
+                                @elseif($log->action == 'update') #fff3cd; color: #856404
+                                @else #d1ecf1; color: #0c5460
+                                @endif; border-radius: 4px; font-size: 12px;">
+                                {{ ucfirst($log->action) }}
+                            </span>
+                        </td>
+                        <td style="padding: 12px; font-size: 13px;">{{ $log->description }}</td>
+                        <td style="padding: 12px; font-size: 13px; color: #6c757d;">{{ $log->ip_address }}</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px; color: #6c757d;">No activity logs found</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
             @endif
             </div>
 
-            <!-- PAGINATION -->
         </div>
         @else
         <!-- NO REPORT SELECTED MESSAGE -->
@@ -548,6 +632,60 @@
                 mainContent.style.marginLeft = '230px';
             }
         });
+
+        // Update filter label and options based on report type
+        const reportTypeSelect = document.querySelector('select[name="report_type"]');
+        const filterLabel = document.getElementById('filter-label');
+        const userFilter = document.getElementById('user-filter');
+        
+        // Store the users and employees data
+        const usersData = @json($users);
+        const employeesData = @json($employees);
+        const currentEmployeeId = "{{ $employeeId }}";
+        
+        function updateFilter(reportType) {
+            if (reportType === 'activity_log') {
+                // Update label
+                filterLabel.textContent = 'User (Optional)';
+                
+                // Clear and populate with users
+                userFilter.innerHTML = '<option value="">All</option>';
+                usersData.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = `${user.name} (${user.role.charAt(0).toUpperCase() + user.role.slice(1)}) - ${user.email}`;
+                    if (currentEmployeeId == user.id) {
+                        option.selected = true;
+                    }
+                    userFilter.appendChild(option);
+                });
+            } else {
+                // Update label
+                filterLabel.textContent = 'Employee (Optional)';
+                
+                // Clear and populate with employees
+                userFilter.innerHTML = '<option value="">All</option>';
+                employeesData.forEach(emp => {
+                    const option = document.createElement('option');
+                    option.value = emp.id;
+                    option.textContent = `${emp.employee_id} - ${emp.first_name} ${emp.last_name}`;
+                    if (currentEmployeeId == emp.id) {
+                        option.selected = true;
+                    }
+                    userFilter.appendChild(option);
+                });
+            }
+        }
+        
+        if (reportTypeSelect) {
+            // Update on change
+            reportTypeSelect.addEventListener('change', function() {
+                updateFilter(this.value);
+            });
+            
+            // Set initial state on page load
+            updateFilter(reportTypeSelect.value);
+        }
     </script>
 
 </body>

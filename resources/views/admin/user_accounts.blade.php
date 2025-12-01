@@ -25,7 +25,7 @@
             <li><a href="{{ route('admin.leave') }}"><i class="fa-solid fa-calendar-check"></i> <span class="menu-text">Leave Requests</span></a></li>
             <li><a href="{{ route('admin.loans') }}"><i class="fa-solid fa-hand-holding-dollar"></i> <span class="menu-text">Loans</span></a></li>
             <li><a href="{{ route('admin.reports') }}"><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Reports</span></a></li>
-            <li><a href="{{ route('admin.support.reports') }}"><i class="fa-solid fa-headset"></i> <span class="menu-text">Support Tickets</span></a></li>
+            <li><a href="{{ route('admin.support.reports') }}"><i class="fa-solid fa-headset"></i> <span class="menu-text">Help Desk</span></a></li>
             <li class="active"><a href="{{ route('admin.users') }}"><i class="fa-solid fa-users-gear"></i> <span class="menu-text">User Accounts</span></a></li>
             <li><a href="{{ route('admin.settings') }}"><i class="fa-solid fa-gear"></i> <span class="menu-text">Settings</span></a></li>
         </ul>
@@ -67,7 +67,8 @@
 
         <!-- Employees WITH Accounts -->
         <section class="employee-list" style="width: 100%;">
-            <table style="width: 100%;">
+            <div style="width: 100%; overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <table>
                 <thead>
                     <tr>
                         <th>Employee ID</th>
@@ -116,6 +117,7 @@
                     @endforelse
                 </tbody>
             </table>
+            </div>
         </section>
 
         <!-- QUICK ACTIONS -->
@@ -129,7 +131,8 @@
 
         <!-- Employees WITHOUT Accounts -->
         <section class="employee-list" style="width: 100%;">
-            <table style="width: 100%;">
+            <div style="width: 100%; overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <table>
                 <thead>
                     <tr>
                         <th>Employee ID</th>
@@ -168,6 +171,7 @@
                     @endforelse
                 </tbody>
             </table>
+            </div>
         </section>
     </main>
 
@@ -251,7 +255,7 @@
             </div>
         </div>
     </div>
-php artisan migrate:fresh --seedphp artisan migrate:fresh --seedphp artisan migrate:fresh --seed
+
     <!-- SIDEBAR TOGGLE SCRIPT -->
     <script>
         const toggleButton = document.getElementById('toggleSidebar');

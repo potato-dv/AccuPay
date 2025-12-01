@@ -13,7 +13,7 @@ class Employee extends Model
         'emergency_contact', 'emergency_phone', 'work_schedule_id', 'custom_rest_days', 
         'night_differential_rate', 'holiday_rate_multiplier', 'tax_id_number', 'sss_number', 
         'philhealth_number', 'pagibig_number', 'bank_account_number', 'bank_name',
-        'vacation_leave_credits', 'sick_leave_credits', 'emergency_leave_credits'
+        'vacation_leave_credits', 'sick_leave_credits', 'emergency_leave_credits', 'qr_token'
     ];
 
     protected $casts = [

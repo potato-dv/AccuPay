@@ -129,7 +129,7 @@
                                 </td>
                                 <td style="padding: 12px; font-size: 13px;">{{ $report->created_at->format('M d, Y') }}</td>
                                 <td style="padding: 12px; text-align: center;">
-                                    <button onclick="openModal('modal{{ $report->id }}')" style="padding: 6px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">
+                                    <button onclick="openModal('modal{{ $report->id }}')" style="padding: 6px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; min-width: 90px;">
                                         <i class="fa-solid fa-eye"></i> View
                                     </button>
                                 </td>
@@ -177,16 +177,17 @@
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                                 <div>
                                     <label style="font-size: 12px; color: #6c757d; display: block; margin-bottom: 4px;">STATUS</label>
-                                    <form method="POST" action="{{ route('admin.support.status', $report->id) }}" style="margin-top: 4px;">
-                                        @csrf
-                                        @method('PUT')
-                                        <select name="status" onchange="this.form.submit()" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; width: 100%;">
-                                            <option value="pending" {{ $report->status == 'pending' ? 'selected' : '' }}>Pending</option>
-                                            <option value="in-progress" {{ $report->status == 'in-progress' ? 'selected' : '' }}>In Progress</option>
-                                            <option value="resolved" {{ $report->status == 'resolved' ? 'selected' : '' }}>Resolved</option>
-                                            <option value="closed" {{ $report->status == 'closed' ? 'selected' : '' }}>Closed</option>
-                                        </select>
-                                    </form>
+                                    <div style="margin-top: 4px;">
+                                        @if($report->status == 'pending')
+                                            <span style="padding: 6px 12px; background: #fff3cd; color: #856404; border-radius: 4px; font-size: 13px; font-weight: 500; display: inline-block;">Pending</span>
+                                        @elseif($report->status == 'in-progress')
+                                            <span style="padding: 6px 12px; background: #cfe2ff; color: #084298; border-radius: 4px; font-size: 13px; font-weight: 500; display: inline-block;">In Progress</span>
+                                        @elseif($report->status == 'resolved')
+                                            <span style="padding: 6px 12px; background: #d1e7dd; color: #0a3622; border-radius: 4px; font-size: 13px; font-weight: 500; display: inline-block;">Resolved</span>
+                                        @else
+                                            <span style="padding: 6px 12px; background: #e2e3e5; color: #41464b; border-radius: 4px; font-size: 13px; font-weight: 500; display: inline-block;">Closed</span>
+                                        @endif
+                                    </div>
                                 </div>
                                 <div>
                                     <label style="font-size: 12px; color: #6c757d; display: block; margin-bottom: 4px;">SUBMITTED</label>
@@ -220,24 +221,44 @@
                             </div>
                         @endif
 
-                        <!-- Reply Form -->
-                        <form method="POST" action="{{ route('admin.support.reply', $report->id) }}">
-                            @csrf
-                            <div style="margin-bottom: 15px;">
-                                <label style="font-size: 12px; color: #6c757d; display: block; margin-bottom: 8px; font-weight: 600;">
-                                    {{ $report->admin_reply ? 'UPDATE REPLY' : 'SEND REPLY' }}
-                                </label>
-                                <textarea name="admin_reply" rows="4" required placeholder="Type your reply here..." style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-family: inherit; font-size: 14px; resize: vertical;">{{ old('admin_reply', $report->admin_reply) }}</textarea>
+                        <!-- Reply Form - Only show if not resolved/closed -->
+                        @if($report->status != 'resolved' && $report->status != 'closed')
+                            <form method="POST" action="{{ route('admin.support.reply', $report->id) }}">
+                                @csrf
+                                <div style="margin-bottom: 15px;">
+                                    <label style="font-size: 12px; color: #6c757d; display: block; margin-bottom: 8px; font-weight: 600;">
+                                        {{ $report->admin_reply ? 'UPDATE REPLY' : 'SEND REPLY' }}
+                                    </label>
+                                    <textarea name="admin_reply" rows="4" required placeholder="Type your reply here..." style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-family: inherit; font-size: 14px; resize: vertical;">{{ old('admin_reply', $report->admin_reply) }}</textarea>
+                                </div>
+                                <div style="display: flex; gap: 10px; justify-content: space-between;">
+                                    <div>
+                                        <button type="button" onclick="closeModal('modal{{ $report->id }}')" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                    <div style="display: flex; gap: 10px;">
+                                        <button type="submit" style="padding: 10px 24px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                                            <i class="fa-solid fa-paper-plane"></i> Send Reply
+                                        </button>
+                                        <button type="button" onclick="if(confirm('Mark this ticket as completed?')) { document.getElementById('completeForm{{ $report->id }}').submit(); }" style="padding: 10px 24px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                                            <i class="fa-solid fa-check"></i> Mark Complete
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                            
+                            <!-- Hidden form for completing ticket -->
+                            <form id="completeForm{{ $report->id }}" method="POST" action="{{ route('admin.support.status', $report->id) }}" style="display: none;">
+                                @csrf
+                                @method('PUT')
+                                <input type="hidden" name="status" value="resolved">
+                            </form>
+                        @else
+                            <div style="background: #d1e7dd; padding: 15px; border-radius: 6px; text-align: center; color: #0a3622;">
+                                <i class="fa-solid fa-check-circle"></i> This ticket has been completed.
                             </div>
-                            <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                                <button type="button" onclick="closeModal('modal{{ $report->id }}')" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
-                                    Cancel
-                                </button>
-                                <button type="submit" style="padding: 10px 24px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">
-                                    <i class="fa-solid fa-paper-plane"></i> Send Reply
-                                </button>
-                            </div>
-                        </form>
+                        @endif
                     </div>
                 </div>
             </div>

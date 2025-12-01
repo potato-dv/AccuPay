@@ -5,8 +5,438 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee Dashboard</title>
     <link rel="icon" type="image/png" href="{{ asset('images/accupay.png') }}">
-    <link rel="stylesheet" href="{{ asset('css/employee/dashboard.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            display: flex;
+            background: #f5f7fa;
+            color: #2d3748;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 250px;
+            height: 100vh;
+            background: #0057a0;
+            color: white;
+            padding: 20px 0;
+            position: fixed;
+            left: 0;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .sidebar-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 20px 30px;
+            cursor: pointer;
+            color: #fff;
+            padding: 10px;
+        }
+
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .sidebar ul li a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .sidebar ul li a:hover {
+            background: #008f5a;
+            color: #fff;
+        }
+
+        .sidebar ul li.active a {
+            background: #003f70;
+            color: #fff;
+        }
+
+        .sidebar.collapsed {
+            width: 70px;
+        }
+
+        .sidebar.collapsed .menu-text,
+        .sidebar.collapsed .logo-text {
+            display: none;
+        }
+
+        /* NAVBAR */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 250px;
+            right: 0;
+            height: 70px;
+            padding: 0 30px;
+            background: #fff;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .navbar-logo {
+            height: 40px;
+        }
+
+        .navbar h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .logout-btn {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: #c53030;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            margin-left: 250px;
+            margin-top: 70px;
+            padding: 30px;
+            width: calc(100% - 250px);
+            transition: all 0.3s ease;
+        }
+
+        /* WELCOME SECTION */
+        .welcome-section {
+            background: linear-gradient(135deg, #0057a0 0%, #00a86b 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .welcome-section h2 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .welcome-section p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .alert-success {
+            background: #00a86b;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        /* STATS GRID */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            border-left: 4px solid #0057a0;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+            border: 1px solid #d1d5db;
+        }
+
+        .stat-card.green { border-left-color: #00a86b; }
+        .stat-card.purple { border-left-color: #0057a0; }
+        .stat-card.orange { border-left-color: #00a86b; }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .stat-title {
+            font-size: 14px;
+            color: #718096;
+            font-weight: 500;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .stat-icon.blue { background: #e6f2ff; color: #0057a0; }
+        .stat-icon.green { background: #e6f7f0; color: #00a86b; }
+        .stat-icon.purple { background: #e6f2ff; color: #0057a0; }
+        .stat-icon.orange { background: #e6f7f0; color: #00a86b; }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        /* QR CODE SECTION */
+        .qr-code-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .qr-code-container {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            display: inline-block;
+        }
+
+        .qr-code-container img {
+            max-width: 250px;
+            height: auto;
+            display: block;
+        }
+
+        .qr-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e6f2ff;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #2d3748;
+        }
+
+        .qr-status {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            gap: 10px;
+        }
+
+        .qr-status-item {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        .qr-status-item.checked-in {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .qr-status-item.checked-out {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .qr-status-item.pending {
+            background: #fef5e7;
+            color: #744210;
+        }
+
+        /* CONTENT SECTIONS */
+        .content-section {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid transparent;
+            margin-bottom: 24px;
+            transition: all 0.2s ease;
+        }
+
+        .content-section:hover {
+            border: 1px solid #d1d5db;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        /* TABLE */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table thead tr {
+            background: #f7fafc;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .data-table th {
+            padding: 12px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: #4a5568;
+            text-transform: uppercase;
+        }
+
+        .data-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+            color: #2d3748;
+        }
+
+        .data-table tr:hover {
+            background: #f7fafc;
+        }
+
+        /* QUICK ACTIONS */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .action-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #e2e8f0;
+            text-decoration: none;
+            color: #2d3748;
+            text-align: center;
+        }
+
+        .action-card:hover {
+            border: 2px solid #d1d5db;
+        }
+
+        .action-card i {
+            font-size: 32px;
+            color: #0057a0;
+            margin-bottom: 10px;
+        }
+
+        .action-card span {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* ACTIVITY FEED */
+        .activity-list {
+            list-style: none;
+        }
+
+        .activity-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #e6f2ff;
+            color: #0057a0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .activity-text {
+            flex: 1;
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        /* BADGE */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success { background: #c6f6d5; color: #22543d; }
+        .badge-warning { background: #feebc8; color: #744210; }
+        .badge-info { background: #bee3f8; color: #2c5282; }
+        .badge-danger { background: #fed7d7; color: #742a2a; }
+
+        .two-column-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .two-column-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
 
@@ -18,6 +448,7 @@
 
         <ul>
             <li class="active"><a href="{{ route('employee.dashboard') }}"><i class="fa-solid fa-house"></i> <span class="menu-text">Dashboard</span></a></li>
+            <li><a href="{{ route('employee.qr.page') }}"><i class="fa-solid fa-qrcode"></i> <span class="menu-text">QR Code</span></a></li>
             <li><a href="{{ route('employee.profile') }}"><i class="fa-solid fa-user"></i> <span class="menu-text">Profile</span></a></li>
             <li><a href="{{ route('employee.leave.application') }}"><i class="fa-solid fa-calendar-plus"></i> <span class="menu-text">Leave Application</span></a></li>
             <li><a href="{{ route('employee.leave.status') }}"><i class="fa-solid fa-calendar-check"></i> <span class="menu-text">Leave Status</span></a></li>
@@ -40,127 +471,242 @@
     <!-- MAIN CONTENT -->
     <main class="main-content">
 
-        <!-- Welcome Panel -->
-        <section class="welcome-panel">
-            <h2>Employee Dashboard</h2>
-            <p>Today is {{ now()->format('l, F d, Y') }}</p>
+        <!-- Welcome Section -->
+        <section class="welcome-section">
+            <h2>Welcome back, {{ $employee->first_name }}!</h2>
+            <p>{{ now()->format('l, F d, Y') }}</p>
             @if(session('success'))
-                <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 6px; margin-top: 15px;">
-                    {{ session('success') }}
+                <div class="alert-success">
+                    <i class="fa-solid fa-check-circle"></i> {{ session('success') }}
                 </div>
             @endif
         </section>
 
-        <!-- Summary Cards -->
-        <section class="summary-cards">
-            <div class="card"><h3>Remaining Leave</h3><p>{{ $remaining_leave }} days</p></div>
-            <div class="card"><h3>Last Payslip</h3><p>{{ $last_payslip ? $last_payslip->period : 'No payslip yet' }}</p></div>
-            <div class="card"><h3>Next Payroll</h3><p>{{ now()->endOfMonth()->format('M d, Y') }}</p></div>
-            <div class="card"><h3>Attendance</h3><p>{{ $total_work_days > 0 ? round(($attendance_count / $total_work_days) * 100) : 0 }}% this month</p></div>
-        </section>
-
-        <!-- Attendance Summary Table -->
-        <section class="attendance-summary">
-            <h2>Attendance Summary (This Month)</h2>
-            <table class="attendance-table">
-                <thead>
-                    <tr>
-                        <th>Category</th>
-                        <th>Total</th>
-                        <th>Details</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Days Present</td>
-                        <td>{{ $present_days }}</td>
-                        <td>
-                            @php
-                                $presentRecords = $attendance_records->where('status', 'present')->take(5);
-                                $allPresent = $attendance_records->where('status', 'present');
-                            @endphp
-                            @if($presentRecords->count() > 0)
-                                <span id="recentPresent" class="clickable">
-                                    {{ $presentRecords->pluck('date')->map(fn($d) => $d->format('M d'))->implode(', ') }}
-                                </span>
-                                @if($allPresent->count() > 5)
-                                    <div id="fullPresent" class="hidden">
-                                        {{ $allPresent->skip(5)->pluck('date')->map(fn($d) => $d->format('M d'))->implode(', ') }}
-                                    </div>
-                                    <span id="togglePresent" class="toggle-btn clickable">Show more</span>
-                                @endif
-                            @else
-                                No present days this month
-                            @endif
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Days Absent</td>
-                        <td>{{ $absent_days }}</td>
-                        <td>
-                            @php
-                                $absentRecords = $attendance_records->where('status', 'absent');
-                            @endphp
-                            {{ $absentRecords->count() > 0 ? $absentRecords->pluck('date')->map(fn($d) => $d->format('M d'))->implode(', ') : 'None' }}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Late Arrivals</td>
-                        <td>{{ $late_days }}</td>
-                        <td>
-                            @php
-                                $lateRecords = $attendance_records->where('status', 'late');
-                            @endphp
-                            {{ $lateRecords->count() > 0 ? $lateRecords->pluck('date')->map(fn($d) => $d->format('M d'))->implode(', ') : 'None' }}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Overtime Hours</td>
-                        <td>{{ number_format($total_overtime_hours, 1) }} hrs</td>
-                        <td>
-                            @php
-                                $overtimeRecords = $attendance_records->where('overtime_hours', '>', 0);
-                            @endphp
-                            @if($overtimeRecords->count() > 0)
-                                {{ $overtimeRecords->map(fn($r) => $r->date->format('M d') . ' – ' . number_format($r->overtime_hours, 1) . ' hrs')->implode(', ') }}
-                            @else
-                                No overtime this month
-                            @endif
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </section>
-
-        <!-- Quick Actions -->
-        <section class="quick-actions">
-            <h2>Quick Actions</h2>
-            <div class="action-buttons">
-                <a href="{{ route('employee.leave.application') }}" class="action-btn">Apply for Leave</a>
-                <a href="{{ route('employee.payslip') }}" class="action-btn">View Payslip</a>
-                <a href="{{ route('employee.profile') }}" class="action-btn">Update Profile</a>
-                <a href="{{ route('employee.leave.status') }}" class="action-btn">Check Leave Status</a>
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card blue">
+                <div class="stat-header">
+                    <span class="stat-title">Remaining Leave</span>
+                    <div class="stat-icon blue">
+                        <i class="fa-solid fa-calendar-days"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ $remaining_leave }} days</div>
             </div>
-        </section>
 
-        <!-- Activity Feed -->
-        <section class="activity-feed">
-            <h2>Recent Activity</h2>
-            <ul>
-                @forelse($recent_activities as $activity)
-                    <li>{{ $activity }}</li>
-                @empty
-                    <li>No recent activity</li>
-                @endforelse
-            </ul>
-        </section>
+            <div class="stat-card green">
+                <div class="stat-header">
+                    <span class="stat-title">Attendance Rate</span>
+                    <div class="stat-icon green">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ $attendance_rate }}%</div>
+            </div>
 
-        <!-- Announcements -->
-        <section class="announcements">
-            <h2>Announcements</h2>
-            <p>🎄 Company holiday on Dec 25 – Merry Christmas!</p>
-            <p>📅 Submit leave requests before Nov 28 for year-end processing.</p>
-        </section>
+            <div class="stat-card purple">
+                <div class="stat-header">
+                    <span class="stat-title">Overtime Hours</span>
+                    <div class="stat-icon purple">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ number_format($total_overtime_hours, 1) }} hrs</div>
+            </div>
+
+            <div class="stat-card orange">
+                <div class="stat-header">
+                    <span class="stat-title">Active Loans</span>
+                    <div class="stat-icon orange">
+                        <i class="fa-solid fa-hand-holding-dollar"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ $active_loans_count }}</div>
+            </div>
+        </div>
+
+        <!-- Two Column Layout -->
+        <div class="two-column-grid">
+            <!-- Left Column -->
+            <div>
+                <!-- Attendance Summary -->
+                <section class="content-section">
+                    <div class="section-header">
+                        <h3 class="section-title">Attendance This Month</h3>
+                        <span class="badge badge-info">{{ $attendance_count }} days recorded</span>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Count</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge badge-success">Present</span></td>
+                                <td><strong>{{ $present_days }}</strong></td>
+                                <td>
+                                    @php
+                                        $presentDates = $attendance_records->where('status', 'present')->take(3);
+                                    @endphp
+                                    @if($presentDates->count() > 0)
+                                        {{ $presentDates->pluck('date')->map(fn($d) => $d->format('M d'))->implode(', ') }}
+                                        @if($attendance_records->where('status', 'present')->count() > 3)
+                                            <span style="color: #718096;">+{{ $attendance_records->where('status', 'present')->count() - 3 }} more</span>
+                                        @endif
+                                    @else
+                                        <span style="color: #a0aec0;">No records</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-warning">Late</span></td>
+                                <td><strong>{{ $late_days }}</strong></td>
+                                <td>
+                                    @php
+                                        $lateDates = $attendance_records->where('status', 'late');
+                                    @endphp
+                                    @if($lateDates->count() > 0)
+                                        {{ $lateDates->pluck('date')->map(fn($d) => $d->format('M d'))->implode(', ') }}
+                                    @else
+                                        <span style="color: #a0aec0;">None</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge badge-danger">Absent</span></td>
+                                <td><strong>{{ $absent_days }}</strong></td>
+                                <td>
+                                    @if($absent_days > 0)
+                                        @php
+                                            // Calculate absent dates based on work schedule
+                                            $workSchedule = $employee->workSchedule;
+                                            $absentDatesList = [];
+                                            
+                                            if ($workSchedule) {
+                                                $workingDays = $workSchedule->working_days ?? [];
+                                                $startDate = now()->startOfMonth();
+                                                $endDate = now()->day < now()->daysInMonth ? now() : now()->endOfMonth();
+                                                $currentDate = $startDate->copy();
+                                                $expectedDates = [];
+                                                
+                                                while ($currentDate <= $endDate) {
+                                                    $dayName = $currentDate->format('l');
+                                                    if (in_array($dayName, $workingDays)) {
+                                                        $expectedDates[] = $currentDate->format('Y-m-d');
+                                                    }
+                                                    $currentDate->addDay();
+                                                }
+                                                
+                                                $recordedDates = $attendance_records->pluck('date')->map(fn($d) => $d->format('Y-m-d'))->toArray();
+                                                $absentDates = array_diff($expectedDates, $recordedDates);
+                                                
+                                                foreach ($absentDates as $date) {
+                                                    $absentDatesList[] = \Carbon\Carbon::parse($date)->format('M d');
+                                                }
+                                            }
+                                        @endphp
+                                        @if(count($absentDatesList) > 0)
+                                            {{ implode(', ', array_slice($absentDatesList, 0, 5)) }}
+                                            @if(count($absentDatesList) > 5)
+                                                <span style="color: #718096;">+{{ count($absentDatesList) - 5 }} more</span>
+                                            @endif
+                                        @else
+                                            <span style="color: #a0aec0;">Calculated: {{ $absent_days }} days</span>
+                                        @endif
+                                    @else
+                                        <span style="color: #a0aec0;">None</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <!-- Quick Actions -->
+                <section class="content-section">
+                    <h3 class="section-title">Quick Actions</h3>
+                    <div class="action-grid">
+                        <a href="{{ route('employee.leave.application') }}" class="action-card">
+                            <i class="fa-solid fa-calendar-plus"></i>
+                            <span>Apply Leave</span>
+                        </a>
+                        <a href="{{ route('employee.payslip') }}" class="action-card">
+                            <i class="fa-solid fa-file-invoice"></i>
+                            <span>View Payslip</span>
+                        </a>
+                        <a href="{{ route('employee.profile') }}" class="action-card">
+                            <i class="fa-solid fa-user-edit"></i>
+                            <span>Update Profile</span>
+                        </a>
+                        <a href="{{ route('employee.loans') }}" class="action-card">
+                            <i class="fa-solid fa-money-bill-wave"></i>
+                            <span>Request Loan</span>
+                        </a>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Column -->
+            <div>
+                <!-- Recent Activity -->
+                <section class="content-section">
+                    <h3 class="section-title">Recent Activity</h3>
+                    <ul class="activity-list">
+                        @forelse($recent_activities as $activity)
+                            <li class="activity-item">
+                                <div class="activity-icon">
+                                    <i class="fa-solid fa-{{ $activity['icon'] }}"></i>
+                                </div>
+                                <span class="activity-text">{{ $activity['text'] }}</span>
+                            </li>
+                        @empty
+                            <li class="activity-item">
+                                <span class="activity-text" style="color: #a0aec0;">No recent activity</span>
+                            </li>
+                        @endforelse
+                    </ul>
+                </section>
+
+                <!-- Payslip Info -->
+                @if($last_payslip)
+                    <section class="content-section">
+                        <h3 class="section-title">Latest Payslip</h3>
+                        <div style="padding: 15px; background: #f7fafc; border-radius: 8px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color: #718096; font-size: 13px;">Period</span>
+                                <span style="font-weight: 600;">{{ $last_payslip->period }}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color: #718096; font-size: 13px;">Gross Pay</span>
+                                <span style="font-weight: 600;">₱{{ number_format($last_payslip->gross_pay, 2) }}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding-top: 8px; border-top: 2px solid #e2e8f0;">
+                                <span style="color: #718096; font-size: 13px;">Net Pay</span>
+                                <span style="font-weight: 700; color: #00a86b; font-size: 18px;">₱{{ number_format($last_payslip->net_pay, 2) }}</span>
+                            </div>
+                        </div>
+                        <a href="{{ route('employee.payslip') }}" style="display: block; text-align: center; padding: 10px; background: #0057a0; color: white; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">
+                            View All Payslips
+                        </a>
+                    </section>
+                @endif
+
+                <!-- Leave Balance -->
+                <section class="content-section">
+                    <h3 class="section-title">Leave Balance</h3>
+                    <div style="text-align: center; padding: 20px;">
+                        <div style="font-size: 48px; font-weight: 700; color: #0057a0;">{{ $remaining_leave }}</div>
+                        <div style="color: #718096; margin-top: 8px;">days remaining</div>
+                        <a href="{{ route('employee.leave.application') }}" style="display: inline-block; margin-top: 15px; padding: 10px 20px; background: #00a86b; color: white; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">
+                            Apply for Leave
+                        </a>
+                    </div>
+                </section>
+            </div>
+        </div>
 
     </main>
 
@@ -174,26 +720,16 @@
         toggleButton.addEventListener('click', () => {
             sidebar.classList.toggle('collapsed');
             if(sidebar.classList.contains('collapsed')){
-                navbar.style.left = '90px';
-                mainContent.style.marginLeft = '90px';
+                navbar.style.left = '70px';
+                mainContent.style.marginLeft = '70px';
+                mainContent.style.width = 'calc(100% - 70px)';
             } else {
-                navbar.style.left = '230px';
-                mainContent.style.marginLeft = '230px';
+                navbar.style.left = '250px';
+                mainContent.style.marginLeft = '250px';
+                mainContent.style.width = 'calc(100% - 250px)';
             }
         });
 
-        // Attendance "Days Present" toggle
-        const togglePresentBtn = document.getElementById('togglePresent');
-        const fullPresent = document.getElementById('fullPresent');
-        togglePresentBtn.addEventListener('click', () => {
-            if(fullPresent.classList.contains('hidden')){
-                fullPresent.classList.remove('hidden');
-                togglePresentBtn.textContent = 'Show less';
-            } else {
-                fullPresent.classList.add('hidden');
-                togglePresentBtn.textContent = 'Show more';
-            }
-        });
     </script>
 
 </body>

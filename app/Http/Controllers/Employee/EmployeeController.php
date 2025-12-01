@@ -10,6 +10,7 @@ use App\Models\LeaveApplication;
 use App\Models\Payslip;
 use App\Models\SupportReport;
 use App\Models\Loan;
+use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
@@ -40,22 +41,73 @@ class EmployeeController extends Controller
             ->get();
         
         $presentDays = $attendanceRecords->where('status', 'present')->count();
-        $absentDays = $attendanceRecords->where('status', 'absent')->count();
         $lateDays = $attendanceRecords->where('status', 'late')->count();
         $totalOvertimeHours = $attendanceRecords->sum('overtime_hours');
+        $attendanceCount = $attendanceRecords->count();
+        
+        // Calculate work days based on employee's work schedule
+        $workSchedule = $employee->workSchedule;
+        $totalWorkDays = 0;
+        $absentDays = 0;
+        
+        if ($workSchedule) {
+            // Get working days from schedule (e.g., ['Monday', 'Tuesday', etc.])
+            $workingDays = $workSchedule->working_days ?? [];
+            
+            // Count expected work days this month
+            $startDate = now()->startOfMonth();
+            $endDate = now()->day < now()->daysInMonth ? now() : now()->endOfMonth();
+            
+            $currentDate = $startDate->copy();
+            $expectedDates = [];
+            
+            while ($currentDate <= $endDate) {
+                $dayName = $currentDate->format('l'); // Monday, Tuesday, etc.
+                if (in_array($dayName, $workingDays)) {
+                    $totalWorkDays++;
+                    $expectedDates[] = $currentDate->format('Y-m-d');
+                }
+                $currentDate->addDay();
+            }
+            
+            // Calculate absent days (expected work days - actual attendance records)
+            $recordedDates = $attendanceRecords->pluck('date')->map(fn($d) => $d->format('Y-m-d'))->toArray();
+            $absentDates = array_diff($expectedDates, $recordedDates);
+            $absentDays = count($absentDates);
+        } else {
+            // Fallback if no work schedule: assume all weekdays
+            $totalWorkDays = now()->day;
+            // Count only explicit absent records
+            $absentDays = $attendanceRecords->where('status', 'absent')->count();
+        }
+        
+        // Calculate attendance rate (present + late days / total work days)
+        $attendanceRate = $totalWorkDays > 0 ? round((($presentDays + $lateDays) / $totalWorkDays) * 100) : 0;
+        
+        // Get active loans count
+        $activeLoansCount = Loan::where('employee_id', $employee->id)
+            ->where('status', 'approved')
+            ->where('remaining_balance', '>', 0)
+            ->count();
+        
+        // Get remaining leave
+        $remainingLeave = 12 - LeaveApplication::where('employee_id', $employee->id)
+            ->where('status', 'approved')
+            ->whereYear('start_date', $currentYear)
+            ->sum('days_count');
         
         $data = [
             'employee' => $employee,
-            'remaining_leave' => 12 - LeaveApplication::where('employee_id', $employee->id)
-                ->where('status', 'approved')
-                ->whereYear('start_date', $currentYear)
-                ->sum('days_count'),
-            'attendance_count' => Attendance::where('employee_id', $employee->id)
-                ->whereMonth('date', $currentMonth)
-                ->whereYear('date', $currentYear)
-                ->count(),
-            'total_work_days' => now()->day,
-            'last_payslip' => Payslip::where('employee_id', $employee->id)->latest()->first(),
+            'remaining_leave' => max(0, $remainingLeave),
+            'attendance_count' => $attendanceCount,
+            'attendance_rate' => $attendanceRate,
+            'total_work_days' => $totalWorkDays,
+            'last_payslip' => Payslip::where('employee_id', $employee->id)
+                ->whereHas('payroll', function($query) {
+                    $query->where('status', 'approved');
+                })
+                ->latest()
+                ->first(),
             'recent_attendance' => Attendance::where('employee_id', $employee->id)
                 ->orderBy('date', 'desc')
                 ->limit(5)
@@ -66,6 +118,7 @@ class EmployeeController extends Controller
             'late_days' => $lateDays,
             'total_overtime_hours' => $totalOvertimeHours,
             'attendance_records' => $attendanceRecords,
+            'active_loans_count' => $activeLoansCount,
         ];
 
         return view('employee.empDashboard', $data);
@@ -108,6 +161,15 @@ class EmployeeController extends Controller
 
         $employee->update($validated);
 
+        // Log activity
+        ActivityLog::log(
+            'update',
+            'employee',
+            "Employee {$employee->full_name} updated their profile information",
+            $employee->id,
+            ['employee' => $employee->full_name, 'fields' => array_keys($validated)]
+        );
+
         return redirect()->route('employee.profile')->with('success', 'Profile updated successfully!');
     }
 
@@ -143,7 +205,7 @@ class EmployeeController extends Controller
         $endDate = new \DateTime($validated['end_date']);
         $daysCount = $startDate->diff($endDate)->days + 1;
 
-        LeaveApplication::create([
+        $leave = LeaveApplication::create([
             'employee_id' => $employee->id,
             'leave_type' => $validated['leave_type'],
             'start_date' => $validated['start_date'],
@@ -152,6 +214,15 @@ class EmployeeController extends Controller
             'reason' => $validated['reason'],
             'status' => 'pending',
         ]);
+
+        // Log activity
+        ActivityLog::log(
+            'create',
+            'leave',
+            "Employee {$employee->full_name} submitted a leave application ({$validated['leave_type']})",
+            $leave->id,
+            ['employee' => $employee->full_name, 'type' => $validated['leave_type'], 'days' => $daysCount]
+        );
 
         return redirect()->route('employee.leave.status')->with('success', 'Leave application submitted successfully!');
     }
@@ -320,13 +391,22 @@ class EmployeeController extends Controller
         $user = Auth::user();
         $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
 
-        SupportReport::create([
+        $report = SupportReport::create([
             'employee_id' => $employee->id,
             'type' => $validated['type'],
             'subject' => $validated['subject'],
             'message' => $validated['message'],
             'status' => 'pending',
         ]);
+
+        // Log activity
+        ActivityLog::log(
+            'create',
+            'support',
+            "Employee {$employee->full_name} submitted a support ticket ({$validated['type']})",
+            $report->id,
+            ['employee' => $employee->full_name, 'type' => $validated['type'], 'subject' => $validated['subject']]
+        );
 
         return redirect()->route('employee.report')->with('success', 'Help desk ticket submitted successfully!');
     }
@@ -364,6 +444,17 @@ class EmployeeController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
+        $employee = Employee::where('user_id', $user->id)->first();
+        
+        // Log activity
+        ActivityLog::log(
+            'update',
+            'user_account',
+            "Employee {$employee->full_name} changed their password",
+            $employee->id,
+            ['employee' => $employee->full_name]
+        );
+
         return redirect()->route('employee.settings')->with('success', 'Password updated successfully!');
     }
 
@@ -371,28 +462,69 @@ class EmployeeController extends Controller
     {
         $activities = [];
 
-        $recentLeave = LeaveApplication::where('employee_id', $employeeId)
+        // Recent leave applications
+        $recentLeaves = LeaveApplication::where('employee_id', $employeeId)
             ->latest()
-            ->first();
-        if ($recentLeave) {
-            $activities[] = "Leave request " . $recentLeave->status . " on " . $recentLeave->created_at->format('M d');
+            ->limit(3)
+            ->get();
+        
+        foreach ($recentLeaves as $leave) {
+            $icon = $leave->status == 'approved' ? 'check-circle' : ($leave->status == 'rejected' ? 'times-circle' : 'clock');
+            $activities[] = [
+                'text' => "Leave request ({$leave->leave_type}) - " . ucfirst($leave->status) . " on " . $leave->created_at->format('M d'),
+                'icon' => $icon,
+                'date' => $leave->created_at
+            ];
         }
 
-        $recentPayslip = Payslip::where('employee_id', $employeeId)
+        // Recent payslips
+        $recentPayslips = Payslip::where('employee_id', $employeeId)
             ->latest()
-            ->first();
-        if ($recentPayslip) {
-            $activities[] = "Payslip for " . $recentPayslip->period . " available";
+            ->limit(2)
+            ->get();
+        
+        foreach ($recentPayslips as $payslip) {
+            $activities[] = [
+                'text' => "Payslip for " . $payslip->period . " generated",
+                'icon' => 'file-invoice-dollar',
+                'date' => $payslip->created_at
+            ];
         }
 
+        // Recent attendance
         $recentAttendance = Attendance::where('employee_id', $employeeId)
             ->latest()
-            ->first();
-        if ($recentAttendance) {
-            $activities[] = "Attendance updated for " . $recentAttendance->date->format('M d');
+            ->limit(2)
+            ->get();
+        
+        foreach ($recentAttendance as $attendance) {
+            $activities[] = [
+                'text' => "Attendance logged for " . $attendance->date->format('M d') . " - " . ucfirst($attendance->status),
+                'icon' => 'calendar-check',
+                'date' => $attendance->created_at
+            ];
         }
 
-        return $activities;
+        // Recent loans
+        $recentLoans = Loan::where('employee_id', $employeeId)
+            ->latest()
+            ->limit(1)
+            ->get();
+        
+        foreach ($recentLoans as $loan) {
+            $activities[] = [
+                'text' => "Loan request of ₱" . number_format($loan->amount, 2) . " - " . ucfirst($loan->status),
+                'icon' => 'hand-holding-dollar',
+                'date' => $loan->created_at
+            ];
+        }
+
+        // Sort by date and return top 5
+        usort($activities, function($a, $b) {
+            return $b['date'] <=> $a['date'];
+        });
+
+        return array_slice($activities, 0, 5);
     }
 
     public function loans()
@@ -432,7 +564,7 @@ class EmployeeController extends Controller
 
         $monthlyDeduction = round($validated['amount'] / $validated['terms'], 2);
 
-        Loan::create([
+        $loan = Loan::create([
             'employee_id' => $employee->id,
             'amount' => $validated['amount'],
             'purpose' => $validated['purpose'],
@@ -443,6 +575,15 @@ class EmployeeController extends Controller
             'status' => 'pending',
         ]);
 
-        return redirect()->route('employee.loans')->with('success', 'Loan request submitted successfully! Wait for admin approval.');
+        // Log activity
+        ActivityLog::log(
+            'create',
+            'loan',
+            "Employee {$employee->full_name} submitted a loan request - ₱" . number_format($validated['amount'], 2),
+            $loan->id,
+            ['employee' => $employee->full_name, 'amount' => $validated['amount'], 'terms' => $validated['terms']]
+        );
+
+        return redirect()->route('employee.loans')->with('success', 'Loan request submitted successfully! Wait for admin approval!');
     }
 }

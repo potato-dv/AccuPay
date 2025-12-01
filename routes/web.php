@@ -4,10 +4,16 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Employee\EmployeeController;
+use App\Http\Controllers\QrAttendanceController;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+// Public Attendance Kiosk (No login required)
+Route::get('/attendance-kiosk', function () {
+    return view('attendance-kiosk');
+})->name('attendance.kiosk');
 
 Route::post('/login', [LoginController::class, 'login'])->name('login');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
@@ -29,6 +35,15 @@ Route::middleware(['auth'])->group(function () {
     // Employee Loan Routes
     Route::get('/employee/loans', [EmployeeController::class, 'loans'])->name('employee.loans');
     Route::post('/employee/loans/store', [EmployeeController::class, 'storeLoan'])->name('employee.loans.store');
+    
+    // QR Code Attendance Routes (Employee)
+    Route::get('/employee/qr-code', [QrAttendanceController::class, 'generateQrCode'])->name('employee.qr.generate');
+    Route::get('/employee/qr-info', [QrAttendanceController::class, 'getEmployeeQr'])->name('employee.qr.info');
+    Route::get('/employee/qr-code-page', [QrAttendanceController::class, 'showEmployeeQrPage'])->name('employee.qr.page');
+    
+    // QR Code Scanner Routes (Admin/Kiosk)
+    Route::get('/qr-attendance/scanner', [QrAttendanceController::class, 'showScanner'])->name('qr.scanner');
+    Route::post('/qr-attendance/process', [QrAttendanceController::class, 'processScan'])->name('qr.process');
     
     // Admin Routes
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');

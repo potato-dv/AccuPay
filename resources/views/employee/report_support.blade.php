@@ -5,9 +5,395 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reports & Support - ACCUPAY INC.</title>
     <link rel="icon" type="image/png" href="{{ asset('images/accupay.png') }}">
-    <link rel="stylesheet" href="{{ asset('css/employee/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/employee/report_support.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            display: flex;
+            background: #f5f7fa;
+            color: #2d3748;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 250px;
+            height: 100vh;
+            background: #0057a0;
+            color: white;
+            padding: 20px 0;
+            position: fixed;
+            left: 0;
+            transition: width 0.3s;
+            overflow: hidden;
+        }
+
+        .sidebar-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 20px 30px;
+            cursor: pointer;
+            color: #fff;
+            padding: 10px;
+        }
+
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .sidebar ul li a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .sidebar ul li a:hover {
+            background: #008f5a;
+        }
+
+        .sidebar ul li.active a {
+            background: #003f70;
+        }
+
+        .sidebar.collapsed {
+            width: 70px;
+        }
+
+        .sidebar.collapsed .menu-text,
+        .sidebar.collapsed .logo-text {
+            display: none;
+        }
+
+        /* NAVBAR */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 250px;
+            right: 0;
+            height: 70px;
+            padding: 0 30px;
+            background: #fff;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            transition: left 0.3s;
+        }
+
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .navbar-logo {
+            height: 40px;
+        }
+
+        .navbar h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .logout-btn {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: #c53030;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            margin-left: 250px;
+            margin-top: 70px;
+            padding: 30px;
+            width: calc(100% - 250px);
+            transition: margin-left 0.3s, width 0.3s;
+        }
+
+        .reports-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .reports-section h2 {
+            font-size: 22px;
+            margin-bottom: 25px;
+            color: #0057a0;
+            border-bottom: 3px solid #0057a0;
+            padding-bottom: 12px;
+        }
+
+        .report-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .report-card {
+            background: #f7fafc;
+            padding: 25px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid #0057a0;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .report-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .report-card i {
+            color: #0057a0;
+            margin-bottom: 15px;
+        }
+
+        .report-card h3 {
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .report-card p {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .support-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .support-section h2 {
+            font-size: 22px;
+            margin-bottom: 15px;
+            color: #0057a0;
+            border-bottom: 3px solid #0057a0;
+            padding-bottom: 12px;
+        }
+
+        .support-section > p {
+            margin-bottom: 25px;
+            color: #718096;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .support-form label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #4a5568;
+            font-size: 14px;
+        }
+
+        .support-form input,
+        .support-form select,
+        .support-form textarea {
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .support-form input:focus,
+        .support-form select:focus,
+        .support-form textarea:focus {
+            outline: none;
+            border-color: #0057a0;
+            box-shadow: 0 0 0 3px rgba(0, 87, 160, 0.1);
+        }
+
+        .support-form textarea {
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .support-form button {
+            width: 100%;
+            padding: 12px 24px;
+            background: #0057a0;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .support-form button:hover {
+            background: #003f70;
+        }
+
+        .support-form button i {
+            margin-right: 8px;
+        }
+
+        .table-responsive {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+
+        .table-responsive table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table-responsive thead {
+            background: #f7fafc;
+        }
+
+        .table-responsive th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #4a5568;
+            border-bottom: 2px solid #e2e8f0;
+            font-size: 14px;
+        }
+
+        .table-responsive td {
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+        }
+
+        .table-responsive tbody tr:hover {
+            background: #f7fafc;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge.pending {
+            background: #fef5e7;
+            color: #d68910;
+        }
+
+        .status-badge.in-progress {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .status-badge.resolved {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.closed {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .view-ticket-btn {
+            padding: 6px 14px;
+            background: #0057a0;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+
+        .view-ticket-btn:hover {
+            background: #003f70;
+        }
+
+        .ticket-details {
+            background: #f7fafc;
+            padding: 25px;
+        }
+
+        .ticket-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .ticket-content h4 {
+            margin-top: 0;
+            color: #2d3748;
+        }
+
+        .admin-reply {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            border-radius: 6px;
+        }
+
+        .waiting-reply {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 6px;
+        }
+
+        .empty-state {
+            background: white;
+            padding: 60px 20px;
+            text-align: center;
+            border-radius: 8px;
+            color: #a0aec0;
+        }
+    </style>
 </head>
 <body>
 
@@ -19,6 +405,7 @@
 
         <ul>
             <li><a href="{{ route('employee.dashboard') }}"><i class="fa-solid fa-house"></i> <span class="menu-text">Dashboard</span></a></li>
+            <li><a href="{{ route('employee.qr.page') }}"><i class="fa-solid fa-qrcode"></i> <span class="menu-text">QR Code</span></a></li>
             <li><a href="{{ route('employee.profile') }}"><i class="fa-solid fa-user"></i> <span class="menu-text">Profile</span></a></li>
             <li><a href="{{ route('employee.leave.application') }}"><i class="fa-solid fa-calendar-plus"></i> <span class="menu-text">Leave Application</span></a></li>
             <li><a href="{{ route('employee.leave.status') }}"><i class="fa-solid fa-calendar-check"></i> <span class="menu-text">Leave Status</span></a></li>
@@ -97,7 +484,7 @@
             <h2>Support & Feedback</h2>
 
             @if(session('success'))
-                <div class="alert alert-success" style="background: #d4edda; border: 1px solid #c3e6cb; padding: 12px; border-radius: 4px; margin-bottom: 20px; color: #155724;">
+                <div class="alert alert-success">
                     {{ session('success') }}
                 </div>
             @endif
@@ -105,9 +492,9 @@
             <p>If you encounter any issues or need assistance, submit your ticket below:</p>
             <form action="{{ route('employee.support.submit') }}" method="POST" class="support-form">
                 @csrf
-                <div style="margin-bottom: 15px;">
+                <div>
                     <label for="type">Issue Type</label>
-                    <select id="type" name="type" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                    <select id="type" name="type" required>
                         <option value="">Select Type</option>
                         <option value="technical">Technical Issue</option>
                         <option value="payroll">Payroll Issue</option>
@@ -131,60 +518,60 @@
         <section class="reports-section">
             <h2>My Help Desk Tickets</h2>
             @if($supportReports->count() > 0)
-                <div class="table-responsive" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <table style="width: 100%; border-collapse: collapse;">
+                <div class="table-responsive">
+                    <table>
                         <thead>
-                            <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                                <th style="padding: 12px; text-align: left;">#</th>
-                                <th style="padding: 12px; text-align: left;">Type</th>
-                                <th style="padding: 12px; text-align: left;">Subject</th>
-                                <th style="padding: 12px; text-align: left;">Status</th>
-                                <th style="padding: 12px; text-align: left;">Submitted</th>
-                                <th style="padding: 12px; text-align: left;">Action</th>
+                            <tr>
+                                <th>#</th>
+                                <th>Type</th>
+                                <th>Subject</th>
+                                <th>Status</th>
+                                <th>Submitted</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($supportReports as $report)
-                                <tr style="border-bottom: 1px solid #dee2e6;">
-                                    <td style="padding: 12px;">{{ $report->id }}</td>
-                                    <td style="padding: 12px;">
-                                        <span style="padding: 4px 8px; background: #6c757d; color: white; border-radius: 4px; font-size: 12px;">
+                                <tr>
+                                    <td>{{ $report->id }}</td>
+                                    <td>
+                                        <span class="status-badge" style="background: #718096; color: white;">
                                             {{ ucfirst($report->type) }}
                                         </span>
                                     </td>
-                                    <td style="padding: 12px;">{{ Str::limit($report->subject, 40) }}</td>
-                                    <td style="padding: 12px;">
+                                    <td>{{ Str::limit($report->subject, 40) }}</td>
+                                    <td>
                                         @if($report->status == 'pending')
-                                            <span style="padding: 4px 8px; background: #ffc107; color: #000; border-radius: 4px; font-size: 12px;">Pending</span>
+                                            <span class="status-badge pending">Pending</span>
                                         @elseif($report->status == 'in-progress')
-                                            <span style="padding: 4px 8px; background: #0d6efd; color: white; border-radius: 4px; font-size: 12px;">In Progress</span>
+                                            <span class="status-badge in-progress">In Progress</span>
                                         @elseif($report->status == 'resolved')
-                                            <span style="padding: 4px 8px; background: #198754; color: white; border-radius: 4px; font-size: 12px;">Resolved</span>
+                                            <span class="status-badge resolved">Resolved</span>
                                         @else
-                                            <span style="padding: 4px 8px; background: #6c757d; color: white; border-radius: 4px; font-size: 12px;">Closed</span>
+                                            <span class="status-badge closed">Closed</span>
                                         @endif
                                     </td>
-                                    <td style="padding: 12px;">{{ $report->created_at->format('M d, Y') }}</td>
-                                    <td style="padding: 12px;">
-                                        <button onclick="toggleTicket('ticket-{{ $report->id }}')" style="padding: 6px 12px; background: #0d6efd; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    <td>{{ $report->created_at->format('M d, Y') }}</td>
+                                    <td>
+                                        <button onclick="toggleTicket('ticket-{{ $report->id }}')" class="view-ticket-btn">
                                             View
                                         </button>
                                     </td>
                                 </tr>
                                 <tr id="ticket-{{ $report->id }}" style="display: none;">
-                                    <td colspan="7" style="padding: 20px; background: #f8f9fa;">
-                                        <div style="background: white; padding: 20px; border-radius: 8px;">
-                                            <h4 style="margin-top: 0;">{{ $report->subject }}</h4>
+                                    <td colspan="7" class="ticket-details">
+                                        <div class="ticket-content">
+                                            <h4>{{ $report->subject }}</h4>
                                             <p style="margin: 10px 0;"><strong>Message:</strong></p>
-                                            <p style="white-space: pre-wrap; background: #f8f9fa; padding: 10px; border-radius: 4px;">{{ $report->message }}</p>
+                                            <p style="white-space: pre-wrap; background: #f7fafc; padding: 15px; border-radius: 6px;">{{ $report->message }}</p>
                                             
                                             @if($report->admin_reply)
-                                                <div style="margin-top: 20px; padding: 15px; background: #d1ecf1; border-left: 4px solid #0dcaf0; border-radius: 4px;">
+                                                <div class="admin-reply">
                                                     <p style="margin: 0 0 5px 0;"><strong>Admin Reply:</strong> <small>({{ $report->replied_at->format('M d, Y h:i A') }})</small></p>
                                                     <p style="white-space: pre-wrap; margin: 0;">{{ $report->admin_reply }}</p>
                                                 </div>
                                             @else
-                                                <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                                                <div class="waiting-reply">
                                                     <p style="margin: 0;">Waiting for admin response...</p>
                                                 </div>
                                             @endif
@@ -196,8 +583,8 @@
                     </table>
                 </div>
             @else
-                <div style="background: white; padding: 40px; text-align: center; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <p style="color: #6c757d; margin: 0;">No help desk tickets submitted yet.</p>
+                <div class="empty-state">
+                    <p>No help desk tickets submitted yet.</p>
                 </div>
             @endif
         </section>

@@ -119,7 +119,78 @@ class ReportService
             $query->where('employee_id', $employeeId);
         }
         
-        return $query->latest('date')->get();
+        $attendanceRecords = $query->latest('date')->get();
+        
+        // Generate absent records for employees with no attendance on scheduled work days
+        if ($dateFrom && $dateTo) {
+            $startDate = Carbon::parse($dateFrom);
+            $endDate = Carbon::parse($dateTo);
+            
+            $employees = $employeeId 
+                ? Employee::where('id', $employeeId)->where('status', 'active')->get()
+                : Employee::where('status', 'active')->get();
+            
+            $absentRecords = collect();
+            
+            foreach ($employees as $employee) {
+                if (!$employee->workSchedule) continue;
+                
+                $currentDate = $startDate->copy();
+                while ($currentDate->lte($endDate)) {
+                    $dayOfWeek = strtolower($currentDate->format('l'));
+                    $isScheduledDay = match($dayOfWeek) {
+                        'monday' => $employee->workSchedule->monday,
+                        'tuesday' => $employee->workSchedule->tuesday,
+                        'wednesday' => $employee->workSchedule->wednesday,
+                        'thursday' => $employee->workSchedule->thursday,
+                        'friday' => $employee->workSchedule->friday,
+                        'saturday' => $employee->workSchedule->saturday,
+                        'sunday' => $employee->workSchedule->sunday,
+                        default => false,
+                    };
+                    
+                    if ($isScheduledDay) {
+                        // Check if attendance record exists (any status)
+                        $hasAttendance = $attendanceRecords->first(function ($record) use ($employee, $currentDate) {
+                            return $record->employee_id == $employee->id 
+                                && $record->date->format('Y-m-d') == $currentDate->format('Y-m-d');
+                        });
+                        
+                        // Only create absent record if NO attendance record exists at all
+                        if (!$hasAttendance) {
+                            // Check for approved leave
+                            $hasLeave = LeaveApplication::where('employee_id', $employee->id)
+                                ->where('status', 'approved')
+                                ->whereDate('start_date', '<=', $currentDate)
+                                ->whereDate('end_date', '>=', $currentDate)
+                                ->exists();
+                            
+                            if (!$hasLeave) {
+                                // Create absent record object
+                                $absentRecord = new Attendance([
+                                    'employee_id' => $employee->id,
+                                    'date' => $currentDate->copy(),
+                                    'time_in' => null,
+                                    'time_out' => null,
+                                    'hours_worked' => 0,
+                                    'overtime_hours' => 0,
+                                    'status' => 'absent',
+                                ]);
+                                $absentRecord->employee = $employee;
+                                $absentRecords->push($absentRecord);
+                            }
+                        }
+                    }
+                    
+                    $currentDate->addDay();
+                }
+            }
+            
+            // Merge and sort by date descending
+            return $attendanceRecords->concat($absentRecords)->sortByDesc('date')->values();
+        }
+        
+        return $attendanceRecords;
     }
 
     /**

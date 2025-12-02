@@ -200,6 +200,59 @@
                             </div>
                         </div>
                         @endif
+                        
+                        @if(in_array($loan->status, ['approved', 'completed']))
+                        <div style="margin-top: 25px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <h4 style="margin: 0; font-size: 15px; color: #333;">
+                                    <i class="fa-solid fa-pen-to-square"></i> Edit Loan Details
+                                </h4>
+                                <button type="button" onclick="toggleEditForm('editForm{{ $loan->id }}')" style="padding: 6px 14px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">
+                                    <i class="fa-solid fa-edit"></i> Edit
+                                </button>
+                            </div>
+                            <div id="editForm{{ $loan->id }}" style="display: none;">
+                                <form method="POST" action="{{ route('admin.loans.update', $loan->id) }}" onsubmit="return confirm('Update loan details? This will recalculate the per-cutoff deduction.');">
+                                    @csrf
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                                        <div>
+                                            <label style="font-size: 12px; color: #666; font-weight: 600; display: block; margin-bottom: 6px;">LOAN AMOUNT (₱)</label>
+                                            <input type="number" name="amount" value="{{ $loan->amount }}" required min="1" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 12px; color: #666; font-weight: 600; display: block; margin-bottom: 6px;">TERMS (Cutoffs)</label>
+                                            <input type="number" name="terms" value="{{ $loan->terms }}" required min="1" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                        </div>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                                        <div>
+                                            <label style="font-size: 12px; color: #666; font-weight: 600; display: block; margin-bottom: 6px;">PAID AMOUNT (₱)</label>
+                                            <input type="number" name="paid_amount" value="{{ $loan->paid_amount }}" required min="0" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                            <small style="color: #666; font-size: 11px; display: block; margin-top: 3px;">Adjust if needed to correct payment records</small>
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 12px; color: #666; font-weight: 600; display: block; margin-bottom: 6px;">START DATE</label>
+                                            <input type="date" name="start_date" value="{{ $loan->start_date ? $loan->start_date->format('Y-m-d') : '' }}" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                        </div>
+                                    </div>
+                                    <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
+                                        <small style="color: #856404; font-size: 12px;">
+                                            <i class="fa-solid fa-warning"></i> <strong>Note:</strong> Updating loan details will automatically recalculate the per-cutoff deduction. The remaining balance will be updated based on the new amount and paid amount.
+                                        </small>
+                                    </div>
+                                    <div style="display: flex; gap: 10px;">
+                                        <button type="submit" style="flex: 1; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                                            <i class="fa-solid fa-save"></i> Save Changes
+                                        </button>
+                                        <button type="button" onclick="toggleEditForm('editForm{{ $loan->id }}')" style="flex: 1; padding: 10px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                                            <i class="fa-solid fa-times"></i> Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        @endif
+                        
                         @if($loan->status == 'pending')
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
                             <form method="POST" action="{{ route('admin.loans.approve', $loan->id) }}" onsubmit="return confirm('Approve this loan?');">
@@ -264,6 +317,14 @@
         }
         function closeModal(id) {
             document.getElementById(id).style.display = 'none';
+        }
+        function toggleEditForm(id) {
+            const form = document.getElementById(id);
+            if (form.style.display === 'none' || form.style.display === '') {
+                form.style.display = 'block';
+            } else {
+                form.style.display = 'none';
+            }
         }
         window.onclick = function(event) {
             if (event.target.style && event.target.style.position === 'fixed') {

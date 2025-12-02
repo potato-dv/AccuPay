@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ActivityLog;
 use App\Models\Loan;
 use App\Models\LoanPayment;
 use Illuminate\Support\Facades\Auth;
@@ -73,6 +74,11 @@ class LoanService
             throw new \Exception('Payment amount cannot exceed remaining balance.');
         }
 
+        $oldPaidAmount = $loan->paid_amount;
+        $oldRemainingBalance = $loan->remaining_balance;
+        $oldStatus = $loan->status;
+        $employeeName = $loan->employee->full_name ?? 'Unknown';
+
         LoanPayment::create([
             'loan_id' => $loan->id,
             'payroll_id' => null,
@@ -85,11 +91,66 @@ class LoanService
 
         $newPaidAmount = $loan->paid_amount + $amount;
         $newRemainingBalance = $loan->remaining_balance - $amount;
+        $newStatus = $newRemainingBalance <= 0 ? 'completed' : 'approved';
         
         $loan->update([
             'paid_amount' => $newPaidAmount,
             'remaining_balance' => $newRemainingBalance,
-            'status' => $newRemainingBalance <= 0 ? 'completed' : 'approved',
+            'status' => $newStatus,
+        ]);
+
+        // Log the manual payment activity
+        $changes = [];
+        $changes[] = "Payment Amount: ₱" . number_format($amount, 2);
+        $changes[] = "Paid Amount: ₱" . number_format($oldPaidAmount, 2) . " → ₱" . number_format($newPaidAmount, 2);
+        $changes[] = "Remaining Balance: ₱" . number_format($oldRemainingBalance, 2) . " → ₱" . number_format($newRemainingBalance, 2);
+        
+        if ($oldStatus !== $newStatus) {
+            $changes[] = "Status: " . ucfirst($oldStatus) . " → " . ucfirst($newStatus);
+        }
+        
+        if ($notes) {
+            $changes[] = "Notes: " . $notes;
+        }
+
+        ActivityLog::log(
+            'loan_payment',
+            "Manual payment of ₱" . number_format($amount, 2) . " for loan of {$employeeName}",
+            implode(" | ", $changes)
+        );
+    }
+
+    /**
+     * Update loan details (for approved/active loans)
+     */
+    public function updateLoan(int $loanId, array $data): void
+    {
+        $loan = Loan::findOrFail($loanId);
+        
+        // Calculate new monthly deduction if terms or amount changed
+        $amount = $data['amount'] ?? $loan->amount;
+        $terms = $data['terms'] ?? $loan->terms;
+        $paidAmount = $data['paid_amount'] ?? $loan->paid_amount;
+        
+        $monthlyDeduction = $terms > 0 ? round($amount / $terms, 2) : 0;
+        $remainingBalance = $amount - $paidAmount;
+        
+        // Ensure status is correct
+        $status = $loan->status;
+        if ($remainingBalance <= 0 && $status === 'approved') {
+            $status = 'completed';
+        } elseif ($remainingBalance > 0 && $status === 'completed') {
+            $status = 'approved';
+        }
+        
+        $loan->update([
+            'amount' => $amount,
+            'terms' => $terms,
+            'monthly_deduction' => $monthlyDeduction,
+            'paid_amount' => $paidAmount,
+            'remaining_balance' => $remainingBalance,
+            'status' => $status,
+            'start_date' => $data['start_date'] ?? $loan->start_date,
         ]);
     }
 }

@@ -26,6 +26,16 @@ class Employee extends Model
         'custom_rest_days' => 'array',
     ];
 
+    protected static function booted()
+    {
+        // Sync user name when employee name is updated
+        static::updated(function ($employee) {
+            if ($employee->user_id && $employee->isDirty(['first_name', 'middle_name', 'last_name'])) {
+                User::where('id', $employee->user_id)->update(['name' => $employee->full_name]);
+            }
+        });
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

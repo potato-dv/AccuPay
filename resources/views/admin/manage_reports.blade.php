@@ -591,7 +591,44 @@
                                 {{ ucfirst($log->action) }}
                             </span>
                         </td>
-                        <td style="padding: 12px; font-size: 13px;">{{ $log->description }}</td>
+                        <td style="padding: 12px; font-size: 13px;">
+                            {{ $log->description }}
+                            @if($log->module == 'loan' && $log->action == 'update' && isset($log->details['old_values']))
+                                <br>
+                                <button onclick="toggleDetails('log{{ $log->id }}')" style="margin-top: 5px; padding: 3px 8px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">
+                                    <i class="fa-solid fa-info-circle"></i> View Changes
+                                </button>
+                                <div id="log{{ $log->id }}" style="display: none; margin-top: 8px; padding: 10px; background: #f8f9fa; border-left: 3px solid #667eea; border-radius: 4px; font-size: 12px;">
+                                    <strong style="color: #667eea;">Changes Made:</strong><br>
+                                    @if($log->details['changes']['amount_changed'] ?? false)
+                                        <div style="margin-top: 5px;">
+                                            • Amount: <span style="color: #dc3545;">₱{{ number_format($log->details['old_values']['amount'], 2) }}</span> 
+                                            → <span style="color: #28a745;">₱{{ number_format($log->details['new_values']['amount'], 2) }}</span>
+                                        </div>
+                                    @endif
+                                    @if($log->details['changes']['terms_changed'] ?? false)
+                                        <div style="margin-top: 5px;">
+                                            • Terms: <span style="color: #dc3545;">{{ $log->details['old_values']['terms'] }} cutoffs</span> 
+                                            → <span style="color: #28a745;">{{ $log->details['new_values']['terms'] }} cutoffs</span>
+                                        </div>
+                                    @endif
+                                    @if($log->details['changes']['paid_amount_changed'] ?? false)
+                                        <div style="margin-top: 5px;">
+                                            • Paid Amount: <span style="color: #dc3545;">₱{{ number_format($log->details['old_values']['paid_amount'], 2) }}</span> 
+                                            → <span style="color: #28a745;">₱{{ number_format($log->details['new_values']['paid_amount'], 2) }}</span>
+                                        </div>
+                                    @endif
+                                    <div style="margin-top: 5px;">
+                                        • Per Cutoff: <span style="color: #dc3545;">₱{{ number_format($log->details['old_values']['monthly_deduction'], 2) }}</span> 
+                                        → <span style="color: #28a745;">₱{{ number_format($log->details['new_values']['monthly_deduction'], 2) }}</span>
+                                    </div>
+                                    <div style="margin-top: 5px;">
+                                        • Balance: <span style="color: #dc3545;">₱{{ number_format($log->details['old_values']['remaining_balance'], 2) }}</span> 
+                                        → <span style="color: #28a745;">₱{{ number_format($log->details['new_values']['remaining_balance'], 2) }}</span>
+                                    </div>
+                                </div>
+                            @endif
+                        </td>
                         <td style="padding: 12px; font-size: 13px; color: #6c757d;">{{ $log->ip_address }}</td>
                     </tr>
                     @empty
@@ -685,6 +722,16 @@
             
             // Set initial state on page load
             updateFilter(reportTypeSelect.value);
+        }
+        
+        // Toggle activity log details
+        function toggleDetails(id) {
+            const element = document.getElementById(id);
+            if (element.style.display === 'none' || element.style.display === '') {
+                element.style.display = 'block';
+            } else {
+                element.style.display = 'none';
+            }
         }
     </script>
 

@@ -14,6 +14,7 @@ use App\Http\Requests\StoreEmployeeRequest;
 use App\Http\Requests\UpdateAttendanceRequest;
 use App\Http\Requests\UpdateEmployeeRequest;
 use App\Http\Requests\UpdateLoanPaymentRequest;
+use App\Http\Requests\UpdateLoanRequest;
 use App\Http\Requests\UpdatePayrollRequest;
 use App\Http\Requests\UpdateSupportStatusRequest;
 use App\Models\Attendance;
@@ -212,7 +213,13 @@ class AdminController extends Controller
     public function updateEmployee(UpdateEmployeeRequest $request, $id)
     {
         $employee = Employee::findOrFail($id);
-        $employee->update($request->validated());
+        $validated = $request->validated();
+        
+        // Check if name fields are being updated
+        $nameChanged = isset($validated['first_name']) || isset($validated['middle_name']) || isset($validated['last_name']);
+        
+        // Update employee (model event will auto-sync user name if changed)
+        $employee->update($validated);
 
         // Log activity
         ActivityLog::log(
@@ -220,7 +227,7 @@ class AdminController extends Controller
             'employee',
             "Updated employee information: {$employee->full_name} ({$employee->employee_id})",
             $employee->employee_id,
-            ['updated_fields' => array_keys($request->validated())]
+            ['updated_fields' => array_keys($validated), 'name_updated' => $nameChanged]
         );
 
         return redirect()
@@ -740,6 +747,62 @@ class AdminController extends Controller
             return redirect()->back()->with('success', 'Loan payment recorded successfully!');
         } catch (\Exception $e) {
             return redirect()->back()->withErrors(['payment_amount' => $e->getMessage()]);
+        }
+    }
+
+    public function updateLoan(UpdateLoanRequest $request, $id)
+    {
+        try {
+            $loan = Loan::findOrFail($id);
+            $employeeName = $loan->employee->full_name ?? 'Unknown';
+            
+            // Store old values for logging
+            $oldValues = [
+                'amount' => $loan->amount,
+                'terms' => $loan->terms,
+                'paid_amount' => $loan->paid_amount,
+                'remaining_balance' => $loan->remaining_balance,
+                'monthly_deduction' => $loan->monthly_deduction,
+            ];
+            
+            $this->loanService->updateLoan($id, $request->only([
+                'amount',
+                'terms',
+                'paid_amount',
+                'start_date'
+            ]));
+
+            // Reload to get updated values
+            $loan->refresh();
+            
+            // Log activity with detailed changes
+            ActivityLog::log(
+                'update',
+                'loan',
+                "Updated loan details for {$employeeName} - ₱" . number_format($request->amount, 2),
+                $id,
+                [
+                    'employee' => $employeeName,
+                    'employee_id' => $loan->employee->employee_id,
+                    'old_values' => $oldValues,
+                    'new_values' => [
+                        'amount' => $loan->amount,
+                        'terms' => $loan->terms,
+                        'paid_amount' => $loan->paid_amount,
+                        'remaining_balance' => $loan->remaining_balance,
+                        'monthly_deduction' => $loan->monthly_deduction,
+                    ],
+                    'changes' => [
+                        'amount_changed' => $oldValues['amount'] != $loan->amount,
+                        'terms_changed' => $oldValues['terms'] != $loan->terms,
+                        'paid_amount_changed' => $oldValues['paid_amount'] != $loan->paid_amount,
+                    ]
+                ]
+            );
+
+            return redirect()->back()->with('success', 'Loan updated successfully!');
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
         }
     }
 

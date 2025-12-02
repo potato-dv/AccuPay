@@ -97,6 +97,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/loans/approve/{id}', [AdminController::class, 'approveLoan'])->name('admin.loans.approve');
     Route::post('/admin/loans/reject/{id}', [AdminController::class, 'rejectLoan'])->name('admin.loans.reject');
     Route::post('/admin/loans/payment/{id}', [AdminController::class, 'updateLoanPayment'])->name('admin.loans.payment');
+    Route::post('/admin/loans/update/{id}', [AdminController::class, 'updateLoan'])->name('admin.loans.update');
     
     Route::get('/admin/settings', [AdminController::class, 'settings'])->name('admin.settings');
 });

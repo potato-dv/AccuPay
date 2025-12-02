@@ -92,7 +92,10 @@ class PayrollService
 
         $presentAttendances = $attendances->whereIn('status', ['present', 'late']);
         $hoursWorked = $presentAttendances->sum('hours_worked') ?? 0;
-        $overtimeHours = $presentAttendances->sum('overtime_hours') ?? 0;
+        
+        // Only count overtime if allowed in work schedule
+        $overtimeAllowed = $employee->workSchedule && $employee->workSchedule->overtime_allowed;
+        $overtimeHours = $overtimeAllowed ? ($presentAttendances->sum('overtime_hours') ?? 0) : 0;
 
         $overtimeRate = $employee->workSchedule->overtime_rate_multiplier ?? 1.25;
 
@@ -259,7 +262,12 @@ class PayrollService
                 }
                 
                 $basicSalary = $hoursWorked * $hourlyRate;
-                $overtimePay = $overtimeHours * ($hourlyRate * $overtimeRate);
+                
+                // Calculate overtime pay for part-time (if overtime is allowed in their schedule)
+                if ($overtimeHours > 0) {
+                    $overtimePay = $overtimeHours * ($hourlyRate * $overtimeRate);
+                }
+                
                 // Part-time has no absence deduction (they're paid only for hours worked)
                 $absenceDeduction = 0;
             } else {

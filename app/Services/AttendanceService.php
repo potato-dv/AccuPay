@@ -52,8 +52,23 @@ class AttendanceService
         }
         
         $workedMinutes = $totalMinutes - $breakMinutes;
-        $hoursWorked = $workedMinutes / 60;
-        $overtimeHours = $hoursWorked > $regularHours ? $hoursWorked - $regularHours : 0;
+        $actualHoursWorked = $workedMinutes / 60;
+        
+        // Check if overtime is allowed for this employee's work schedule
+        $overtimeAllowed = $employee->workSchedule && $employee->workSchedule->overtime_allowed;
+        $overtimeHours = 0;
+        $hoursWorked = $actualHoursWorked;
+        
+        if ($actualHoursWorked > $regularHours) {
+            if ($overtimeAllowed) {
+                // Overtime is allowed - count all hours and calculate overtime
+                $overtimeHours = $actualHoursWorked - $regularHours;
+            } else {
+                // Overtime is NOT allowed - cap hours worked at regular hours
+                // Employee only gets paid for scheduled hours, not extra time
+                $hoursWorked = $regularHours;
+            }
+        }
 
         return [
             'hours_worked' => round($hoursWorked, 2),

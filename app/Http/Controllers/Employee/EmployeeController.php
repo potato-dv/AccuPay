@@ -3,534 +3,241 @@
 namespace App\Http\Controllers\Employee;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\Employee\UpdateProfileRequest;
+use App\Http\Requests\Employee\StoreLeaveApplicationRequest;
+use App\Http\Requests\Employee\StoreLoanRequest;
+use App\Http\Requests\Employee\SubmitSupportReportRequest;
+use App\Http\Requests\Employee\UpdatePasswordRequest;
 use App\Models\Employee;
-use App\Models\Attendance;
-use App\Models\LeaveApplication;
-use App\Models\Payslip;
-use App\Models\SupportReport;
 use App\Models\Loan;
 use App\Models\ActivityLog;
+use App\Services\Employee\EmployeeDashboardService;
+use App\Services\Employee\EmployeeProfileService;
+use App\Services\Employee\EmployeeLoanService;
+use App\Services\Employee\EmployeeLeaveService;
+use App\Services\Employee\EmployeePayslipService;
+use App\Services\Employee\EmployeeSupportService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class EmployeeController extends Controller
 {
-    public function dashboard()
+    public function __construct(
+        private EmployeeDashboardService $dashboardService,
+        private EmployeeProfileService $profileService,
+        private EmployeeLoanService $loanService,
+        private EmployeeLeaveService $leaveService,
+        private EmployeePayslipService $payslipService,
+        private EmployeeSupportService $supportService
+    ) {
+    }
+
+    /**
+     * Get authenticated employee
+     */
+    protected function getAuthEmployee(): Employee
     {
         $user = Auth::user();
-        $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+        $employee = $this->profileService->getEmployeeByUser($user);
         
         if (!$employee) {
-            return redirect('/')->with('error', 'No employee profile found. Please contact HR.');
+            abort(redirect('/')->with('error', 'No employee profile found. Please contact HR.'));
         }
         
-        // Auto-link employee to user if not linked
-        if (!$employee->user_id) {
-            $employee->update(['user_id' => $user->id]);
-        }
+        $this->profileService->linkEmployeeToUser($employee, $user);
+        
+        return $employee;
+    }
 
-        $currentMonth = now()->month;
-        $currentYear = now()->year;
+    /**
+     * Show employee dashboard
+     */
+    public function dashboard(Request $request)
+    {
+        $employee = $this->getAuthEmployee();
         
-        // Get attendance statistics
-        $attendanceRecords = Attendance::where('employee_id', $employee->id)
-            ->whereMonth('date', $currentMonth)
-            ->whereYear('date', $currentYear)
-            ->orderBy('date', 'desc')
-            ->get();
+        $month = $request->input('month', now()->month);
+        $year = $request->input('year', now()->year);
         
-        $presentDays = $attendanceRecords->where('status', 'present')->count();
-        $lateDays = $attendanceRecords->where('status', 'late')->count();
-        $totalOvertimeHours = $attendanceRecords->sum('overtime_hours');
-        $attendanceCount = $attendanceRecords->count();
+        $data = $this->dashboardService->getDashboardData($employee, $month, $year);
         
-        // Calculate work days based on employee's work schedule
-        $workSchedule = $employee->workSchedule;
-        $totalWorkDays = 0;
-        $absentDays = 0;
-        
-        if ($workSchedule) {
-            // Get working days from schedule (e.g., ['Monday', 'Tuesday', etc.])
-            $workingDays = $workSchedule->working_days ?? [];
-            
-            // Count expected work days this month
-            $startDate = now()->startOfMonth();
-            $endDate = now()->day < now()->daysInMonth ? now() : now()->endOfMonth();
-            
-            $currentDate = $startDate->copy();
-            $expectedDates = [];
-            
-            while ($currentDate <= $endDate) {
-                $dayName = $currentDate->format('l'); // Monday, Tuesday, etc.
-                if (in_array($dayName, $workingDays)) {
-                    $totalWorkDays++;
-                    $expectedDates[] = $currentDate->format('Y-m-d');
-                }
-                $currentDate->addDay();
-            }
-            
-            // Calculate absent days (expected work days - actual attendance records)
-            $recordedDates = $attendanceRecords->pluck('date')->map(fn($d) => $d->format('Y-m-d'))->toArray();
-            $absentDates = array_diff($expectedDates, $recordedDates);
-            $absentDays = count($absentDates);
-        } else {
-            // Fallback if no work schedule: assume all weekdays
-            $totalWorkDays = now()->day;
-            // Count only explicit absent records
-            $absentDays = $attendanceRecords->where('status', 'absent')->count();
-        }
-        
-        // Calculate attendance rate (present + late days / total work days)
-        $attendanceRate = $totalWorkDays > 0 ? round((($presentDays + $lateDays) / $totalWorkDays) * 100) : 0;
-        
-        // Get active loans count
-        $activeLoansCount = Loan::where('employee_id', $employee->id)
-            ->where('status', 'approved')
-            ->where('remaining_balance', '>', 0)
-            ->count();
-        
-        // Get remaining leave
-        $remainingLeave = 12 - LeaveApplication::where('employee_id', $employee->id)
-            ->where('status', 'approved')
-            ->whereYear('start_date', $currentYear)
-            ->sum('days_count');
-        
-        $data = [
-            'employee' => $employee,
-            'remaining_leave' => max(0, $remainingLeave),
-            'attendance_count' => $attendanceCount,
-            'attendance_rate' => $attendanceRate,
-            'total_work_days' => $totalWorkDays,
-            'last_payslip' => Payslip::where('employee_id', $employee->id)
-                ->whereHas('payroll', function($query) {
-                    $query->where('status', 'approved');
-                })
-                ->latest()
-                ->first(),
-            'recent_attendance' => Attendance::where('employee_id', $employee->id)
-                ->orderBy('date', 'desc')
-                ->limit(5)
-                ->get(),
-            'recent_activities' => $this->getRecentActivities($employee->id),
-            'present_days' => $presentDays,
-            'absent_days' => $absentDays,
-            'late_days' => $lateDays,
-            'total_overtime_hours' => $totalOvertimeHours,
-            'attendance_records' => $attendanceRecords,
-            'active_loans_count' => $activeLoansCount,
-        ];
-
         return view('employee.empDashboard', $data);
     }
 
+    /**
+     * Show employee profile
+     */
     public function profile()
     {
-        $user = Auth::user();
-        $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
-        
-        if (!$employee) {
-            return redirect('/')->with('error', 'No employee profile found.');
-        }
-        
-        if (!$employee->user_id) {
-            $employee->update(['user_id' => $user->id]);
-        }
-
+        $employee = $this->getAuthEmployee();
         return view('employee.profile', compact('employee'));
     }
 
-    public function updateProfile(Request $request)
+    /**
+     * Update employee profile
+     */
+    public function updateProfile(UpdateProfileRequest $request)
     {
-        $user = Auth::user();
-        $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+        $employee = $this->getAuthEmployee();
         
-        if (!$employee->user_id) {
-            $employee->update(['user_id' => $user->id]);
+        try {
+            $this->profileService->updateProfile($employee, $request->validated());
+            
+            ActivityLog::log(
+                'update',
+                'employee',
+                "Employee {$employee->full_name} updated their profile information",
+                $employee->id,
+                ['employee' => $employee->full_name]
+            );
+            
+            return redirect()->route('employee.profile')->with('success', 'Profile updated successfully!');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to update profile.')->withInput();
         }
-
-        $validated = $request->validate([
-            'phone' => 'required|string|regex:/^[0-9]{10,11}$/',
-            'address' => 'required|string|max:500',
-            'emergency_contact' => 'required|string|max:255',
-            'emergency_phone' => 'required|string|regex:/^[0-9]{10,11}$/',
-        ], [
-            'phone.regex' => 'Phone number must be 10 or 11 digits.',
-            'emergency_phone.regex' => 'Emergency phone must be 10 or 11 digits.',
-        ]);
-
-        $employee->update($validated);
-
-        // Log activity
-        ActivityLog::log(
-            'update',
-            'employee',
-            "Employee {$employee->full_name} updated their profile information",
-            $employee->id,
-            ['employee' => $employee->full_name, 'fields' => array_keys($validated)]
-        );
-
-        return redirect()->route('employee.profile')->with('success', 'Profile updated successfully!');
     }
 
+    /**
+     * Show leave application form
+     */
     public function leaveApplication()
     {
-        $user = Auth::user();
-        $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
-        
-        if (!$employee->user_id) {
-            $employee->update(['user_id' => $user->id]);
-        }
-        
+        $employee = $this->getAuthEmployee();
         return view('employee.leaveApplication', compact('employee'));
     }
 
-    public function storeLeaveApplication(Request $request)
+    /**
+     * Store leave application
+     */
+    public function storeLeaveApplication(StoreLeaveApplicationRequest $request)
     {
-        $user = Auth::user();
-        $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
-        
-        if (!$employee->user_id) {
-            $employee->update(['user_id' => $user->id]);
+        $employee = $this->getAuthEmployee();
+
+        try {
+            $this->leaveService->createLeaveApplication($employee, $request->validated());
+            return redirect()->route('employee.leave.status')->with('success', 'Leave application submitted successfully!');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to submit leave application.')->withInput();
         }
-
-        $validated = $request->validate([
-            'leave_type' => 'required|string',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'reason' => 'required|string',
-        ]);
-
-        $startDate = new \DateTime($validated['start_date']);
-        $endDate = new \DateTime($validated['end_date']);
-        $daysCount = $startDate->diff($endDate)->days + 1;
-
-        $leave = LeaveApplication::create([
-            'employee_id' => $employee->id,
-            'leave_type' => $validated['leave_type'],
-            'start_date' => $validated['start_date'],
-            'end_date' => $validated['end_date'],
-            'days_count' => $daysCount,
-            'reason' => $validated['reason'],
-            'status' => 'pending',
-        ]);
-
-        // Log activity
-        ActivityLog::log(
-            'create',
-            'leave',
-            "Employee {$employee->full_name} submitted a leave application ({$validated['leave_type']})",
-            $leave->id,
-            ['employee' => $employee->full_name, 'type' => $validated['leave_type'], 'days' => $daysCount]
-        );
-
-        return redirect()->route('employee.leave.status')->with('success', 'Leave application submitted successfully!');
     }
 
+    /**
+     * Show leave status
+     */
     public function leaveStatus()
     {
-        $user = Auth::user();
-        $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
-        
-        if (!$employee->user_id) {
-            $employee->update(['user_id' => $user->id]);
-        }
-        
-        $leaveApplications = LeaveApplication::where('employee_id', $employee->id)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $employee = $this->getAuthEmployee();
+        $leaveApplications = $this->leaveService->getLeaveApplications($employee);
 
         return view('employee.leaveStatus', compact('employee', 'leaveApplications'));
     }
 
+    /**
+     * Show payslips
+     */
     public function payslip()
     {
-        $user = Auth::user();
-        $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
-        
-        if (!$employee->user_id) {
-            $employee->update(['user_id' => $user->id]);
-        }
-        
-        // Get active loans for this employee
-        $activeLoans = Loan::where('employee_id', $employee->id)
-            ->where('status', 'approved')
-            ->where('remaining_balance', '>', 0)
-            ->get();
-        
-        $totalLoanBalance = $activeLoans->sum('remaining_balance');
-        $totalMonthlyDeduction = $activeLoans->sum('monthly_deduction');
-        
-        // Only show payslips from approved payrolls
-        $payslips = Payslip::with(['payroll'])
-            ->where('employee_id', $employee->id)
-            ->whereHas('payroll', function($query) {
-                $query->where('status', 'approved');
-            })
-            ->orderBy('created_at', 'desc')
-            ->get();
-        
-        // Get attendance records for each payslip including absent days
-        $attendanceByPayslip = [];
-        foreach ($payslips as $payslip) {
-            $attendanceRecords = Attendance::where('employee_id', $employee->id)
-                ->whereBetween('date', [$payslip->payroll->period_start, $payslip->payroll->period_end])
-                ->orderBy('date', 'asc')
-                ->get();
-            
-            // Index by date for easy lookup
-            $attendanceByDate = [];
-            foreach ($attendanceRecords as $record) {
-                $attendanceByDate[$record->date->format('Y-m-d')] = $record;
-            }
-            
-            // Generate all working dates in the payroll period
-            $periodStart = \Carbon\Carbon::parse($payslip->payroll->period_start);
-            $periodEnd = \Carbon\Carbon::parse($payslip->payroll->period_end);
-            $allDates = [];
-            $currentDate = $periodStart->copy();
-            
-            while ($currentDate->lte($periodEnd)) {
-                $dateStr = $currentDate->format('Y-m-d');
-                
-                // Check if employee should work on this date
-                $isWorkingDay = $employee->isScheduledToWork($dateStr);
-                
-                if ($isWorkingDay) {
-                    // Check if attendance record exists
-                    if (isset($attendanceByDate[$dateStr])) {
-                        $allDates[] = $attendanceByDate[$dateStr];
-                    } else {
-                        // Create absent record for display
-                        $absentRecord = new Attendance();
-                        $absentRecord->date = $dateStr;
-                        $absentRecord->status = 'absent';
-                        $absentRecord->hours_worked = 0;
-                        $allDates[] = $absentRecord;
-                    }
-                }
-                
-                $currentDate->addDay();
-            }
-            
-            $attendanceByPayslip[$payslip->id] = $allDates;
-        }
+        $employee = $this->getAuthEmployee();
+        $data = $this->payslipService->getPayslipsData($employee);
 
-        return view('employee.payslip', compact('employee', 'payslips', 'attendanceByPayslip', 'activeLoans', 'totalLoanBalance', 'totalMonthlyDeduction'));
+        return view('employee.payslip', [
+            'employee' => $employee,
+            'payslips' => $data['payslips'],
+            'attendanceByPayslip' => $data['attendance_by_payslip'],
+            'activeLoans' => $data['active_loans'],
+            'totalLoanBalance' => $data['total_loan_balance'],
+            'totalMonthlyDeduction' => $data['total_monthly_deduction'],
+        ]);
     }
 
+    /**
+     * Show reports and support
+     */
     public function reportSupport()
     {
-        $user = Auth::user();
-        $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+        $employee = $this->getAuthEmployee();
         
-        if (!$employee->user_id) {
-            $employee->update(['user_id' => $user->id]);
-        }
+        $leaveStats = $this->leaveService->getLeaveStatistics($employee);
+        $payslipStats = $this->payslipService->getPayslipStatistics($employee);
+        $supportReports = $this->supportService->getSupportReports($employee);
         
-        $currentYear = now()->year;
-        
-        // Leave statistics
-        $totalLeavesTaken = LeaveApplication::where('employee_id', $employee->id)
-            ->where('status', 'approved')
-            ->whereYear('start_date', $currentYear)
-            ->sum('days_count');
-            
-        $vacationLeaves = LeaveApplication::where('employee_id', $employee->id)
-            ->where('status', 'approved')
-            ->where('leave_type', 'Vacation Leave')
-            ->whereYear('start_date', $currentYear)
-            ->sum('days_count');
-            
-        $sickLeaves = LeaveApplication::where('employee_id', $employee->id)
-            ->where('status', 'approved')
-            ->where('leave_type', 'Sick Leave')
-            ->whereYear('start_date', $currentYear)
-            ->sum('days_count');
-            
-        $pendingLeaves = LeaveApplication::where('employee_id', $employee->id)
-            ->where('status', 'pending')
-            ->count();
-        
-        // Payroll statistics
-        $lastPayslip = Payslip::where('employee_id', $employee->id)
-            ->latest()
-            ->first();
-            
-        $avgMonthlyPay = Payslip::where('employee_id', $employee->id)
-            ->avg('net_pay');
-            
-        $totalPayslips = Payslip::where('employee_id', $employee->id)->count();
-        
-        // Support reports
-        $supportReports = SupportReport::where('employee_id', $employee->id)
-            ->orderBy('created_at', 'desc')
-            ->get();
-        
-        return view('employee.report_support', compact(
-            'employee', 
-            'totalLeavesTaken', 
-            'vacationLeaves', 
-            'sickLeaves', 
-            'pendingLeaves',
-            'lastPayslip',
-            'avgMonthlyPay',
-            'totalPayslips',
-            'supportReports'
-        ));
+        return view('employee.report_support', [
+            'employee' => $employee,
+            'totalLeavesTaken' => $leaveStats['total_taken'],
+            'vacationLeaves' => $leaveStats['vacation_leaves'],
+            'sickLeaves' => $leaveStats['sick_leaves'],
+            'pendingLeaves' => $leaveStats['pending_count'],
+            'lastPayslip' => $payslipStats['last_payslip'],
+            'avgMonthlyPay' => $payslipStats['avg_monthly_pay'],
+            'totalPayslips' => $payslipStats['total_payslips'],
+            'supportReports' => $supportReports,
+        ]);
     }
 
-    public function submitSupportReport(Request $request)
+    /**
+     * Submit support report
+     */
+    public function submitSupportReport(SubmitSupportReportRequest $request)
     {
-        $validated = $request->validate([
-            'type' => 'required|in:technical,payroll,leave,attendance,other',
-            'subject' => 'required|string|max:255',
-            'message' => 'required|string',
-        ]);
+        $employee = $this->getAuthEmployee();
 
-        $user = Auth::user();
-        $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
-
-        $report = SupportReport::create([
-            'employee_id' => $employee->id,
-            'type' => $validated['type'],
-            'subject' => $validated['subject'],
-            'message' => $validated['message'],
-            'status' => 'pending',
-        ]);
-
-        // Log activity
-        ActivityLog::log(
-            'create',
-            'support',
-            "Employee {$employee->full_name} submitted a support ticket ({$validated['type']})",
-            $report->id,
-            ['employee' => $employee->full_name, 'type' => $validated['type'], 'subject' => $validated['subject']]
-        );
-
-        return redirect()->route('employee.report')->with('success', 'Help desk ticket submitted successfully!');
+        try {
+            $this->supportService->createSupportReport($employee, $request->validated());
+            return redirect()->route('employee.report')->with('success', 'Help desk ticket submitted successfully!');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to submit support ticket.')->withInput();
+        }
     }
 
+    /**
+     * Show settings
+     */
     public function settings()
     {
+        $employee = $this->getAuthEmployee();
         $user = Auth::user();
-        $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
-        
-        if (!$employee->user_id) {
-            $employee->update(['user_id' => $user->id]);
-        }
         
         return view('employee.settings', compact('employee', 'user'));
     }
 
-    public function updatePassword(Request $request)
+    /**
+     * Update password
+     */
+    public function updatePassword(UpdatePasswordRequest $request)
     {
-        $validated = $request->validate([
-            'current_password' => 'required',
-            'password' => 'required|min:8|confirmed|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
-        ], [
-            'password.regex' => 'Password must contain at least one uppercase letter, one lowercase letter, and one number.',
-            'password.min' => 'Password must be at least 8 characters.',
-            'password.confirmed' => 'Password confirmation does not match.',
-        ]);
-
         $user = Auth::user();
+        $employee = $this->getAuthEmployee();
 
-        if (!Hash::check($validated['current_password'], $user->password)) {
+        if (!Hash::check($request->input('current_password'), $user->password)) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
 
-        $user->update([
-            'password' => Hash::make($validated['password']),
-        ]);
+        try {
+            $user->update([
+                'password' => Hash::make($request->input('password')),
+            ]);
 
-        $employee = Employee::where('user_id', $user->id)->first();
-        
-        // Log activity
-        ActivityLog::log(
-            'update',
-            'user_account',
-            "Employee {$employee->full_name} changed their password",
-            $employee->id,
-            ['employee' => $employee->full_name]
-        );
+            ActivityLog::log(
+                'update',
+                'user_account',
+                "Employee {$employee->full_name} changed their password",
+                $employee->id,
+                ['employee' => $employee->full_name]
+            );
 
-        return redirect()->route('employee.settings')->with('success', 'Password updated successfully!');
+            return redirect()->route('employee.settings')->with('success', 'Password updated successfully!');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to update password.');
+        }
     }
 
-    private function getRecentActivities($employeeId)
-    {
-        $activities = [];
-
-        // Recent leave applications
-        $recentLeaves = LeaveApplication::where('employee_id', $employeeId)
-            ->latest()
-            ->limit(3)
-            ->get();
-        
-        foreach ($recentLeaves as $leave) {
-            $icon = $leave->status == 'approved' ? 'check-circle' : ($leave->status == 'rejected' ? 'times-circle' : 'clock');
-            $activities[] = [
-                'text' => "Leave request ({$leave->leave_type}) - " . ucfirst($leave->status) . " on " . $leave->created_at->format('M d'),
-                'icon' => $icon,
-                'date' => $leave->created_at
-            ];
-        }
-
-        // Recent payslips
-        $recentPayslips = Payslip::where('employee_id', $employeeId)
-            ->latest()
-            ->limit(2)
-            ->get();
-        
-        foreach ($recentPayslips as $payslip) {
-            $activities[] = [
-                'text' => "Payslip for " . $payslip->period . " generated",
-                'icon' => 'file-invoice-dollar',
-                'date' => $payslip->created_at
-            ];
-        }
-
-        // Recent attendance
-        $recentAttendance = Attendance::where('employee_id', $employeeId)
-            ->latest()
-            ->limit(2)
-            ->get();
-        
-        foreach ($recentAttendance as $attendance) {
-            $activities[] = [
-                'text' => "Attendance logged for " . $attendance->date->format('M d') . " - " . ucfirst($attendance->status),
-                'icon' => 'calendar-check',
-                'date' => $attendance->created_at
-            ];
-        }
-
-        // Recent loans
-        $recentLoans = Loan::where('employee_id', $employeeId)
-            ->latest()
-            ->limit(1)
-            ->get();
-        
-        foreach ($recentLoans as $loan) {
-            $activities[] = [
-                'text' => "Loan request of ₱" . number_format($loan->amount, 2) . " - " . ucfirst($loan->status),
-                'icon' => 'hand-holding-dollar',
-                'date' => $loan->created_at
-            ];
-        }
-
-        // Sort by date and return top 5
-        usort($activities, function($a, $b) {
-            return $b['date'] <=> $a['date'];
-        });
-
-        return array_slice($activities, 0, 5);
-    }
-
+    /**
+     * Show loans
+     */
     public function loans()
     {
-        $user = Auth::user();
-        $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+        $employee = $this->getAuthEmployee();
 
         $loans = Loan::where('employee_id', $employee->id)
             ->with('payments')
@@ -543,7 +250,6 @@ class EmployeeController extends Controller
             ->with('payments')
             ->get();
 
-        // Calculate totals using paid_amount field
         $totalBorrowed = $loans->whereIn('status', ['approved', 'completed'])->sum('amount');
         $totalPaid = $loans->whereIn('status', ['approved', 'completed'])->sum('paid_amount');
         $totalRemaining = $loans->where('status', 'approved')->sum('remaining_balance');
@@ -551,39 +257,33 @@ class EmployeeController extends Controller
         return view('employee.loans', compact('employee', 'loans', 'activeLoans', 'totalBorrowed', 'totalPaid', 'totalRemaining'));
     }
 
-    public function storeLoan(Request $request)
+    /**
+     * Store loan request
+     */
+    public function storeLoan(StoreLoanRequest $request)
     {
-        $validated = $request->validate([
-            'amount' => 'required|numeric|min:100|max:100000',
-            'purpose' => 'required|string|max:255',
-            'terms' => 'required|integer|min:1|max:24',
-        ]);
+        $employee = $this->getAuthEmployee();
 
-        $user = Auth::user();
-        $employee = Employee::where('user_id', $user->id)->orWhere('email', $user->email)->first();
+        try {
+            $loan = $this->loanService->createLoanRequest($employee, [
+                'amount' => $request->input('amount'),
+                'purpose' => $request->input('purpose'),
+                'terms' => $request->input('terms'),
+            ]);
 
-        $monthlyDeduction = round($validated['amount'] / $validated['terms'], 2);
+            ActivityLog::log(
+                'create',
+                'loan',
+                "Employee {$employee->full_name} submitted a loan request - ₱" . number_format($loan->amount, 2),
+                $loan->id,
+                ['employee' => $employee->full_name, 'amount' => $loan->amount, 'terms' => $loan->terms]
+            );
 
-        $loan = Loan::create([
-            'employee_id' => $employee->id,
-            'amount' => $validated['amount'],
-            'purpose' => $validated['purpose'],
-            'terms' => $validated['terms'],
-            'monthly_deduction' => $monthlyDeduction,
-            'paid_amount' => 0,
-            'remaining_balance' => $validated['amount'],
-            'status' => 'pending',
-        ]);
-
-        // Log activity
-        ActivityLog::log(
-            'create',
-            'loan',
-            "Employee {$employee->full_name} submitted a loan request - ₱" . number_format($validated['amount'], 2),
-            $loan->id,
-            ['employee' => $employee->full_name, 'amount' => $validated['amount'], 'terms' => $validated['terms']]
-        );
-
-        return redirect()->route('employee.loans')->with('success', 'Loan request submitted successfully! Wait for admin approval!');
+            return redirect()->route('employee.loans')->with('success', 'Loan request submitted successfully! Wait for admin approval!');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage())->withInput();
+        }
     }
 }

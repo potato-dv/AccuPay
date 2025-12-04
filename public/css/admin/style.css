@@ -21,7 +21,8 @@ body {
     position: fixed;
     left: 0;
     transition: width 0.3s;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
 }

@@ -610,6 +610,49 @@
                                     <td style="padding: 10px 0 0 0; font-weight: 700; font-size: 15px; color: #00a86b;">₱{{ number_format($payslip->net_pay, 2) }}</td>
                                 </tr>
                             </table>
+
+                            <!-- Bank Transfer Status -->
+                            @if($payslip->is_salary_sent)
+                                @if(str_starts_with($payslip->transfer_reference_number, 'CHK-'))
+                                    <!-- Check for Pickup -->
+                                    <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 12px 0; color: #856404; font-size: 15px;">
+                                            <i class="fas fa-money-check"></i> Check Ready for Pickup
+                                        </h4>
+                                        <div style="font-size: 13px; color: #856404; line-height: 1.6;">
+                                            <p style="margin: 0 0 10px 0;">Your salary check is ready for pickup at the HR office.</p>
+                                            <div style="background: white; padding: 12px; border-radius: 6px; margin-top: 10px;">
+                                                <div style="margin-bottom: 5px;"><strong>Check Number:</strong> {{ $payslip->transfer_reference_number }}</div>
+                                                <div style="margin-bottom: 5px;"><strong>Amount:</strong> ₱{{ number_format($payslip->net_pay, 2) }}</div>
+                                                <div style="margin-bottom: 5px;"><strong>Pickup Location:</strong> HR Office</div>
+                                                <div><strong>Issue Date:</strong> {{ $payslip->transfer_date->format('M d, Y h:i A') }}</div>
+                                            </div>
+                                            <div style="margin-top: 12px; padding: 10px; background: #fff; border-left: 3px solid #ffc107; font-size: 12px;">
+                                                <strong><i class="fas fa-info-circle"></i> Instructions:</strong><br>
+                                                1. Pick up your check at the HR office during office hours<br>
+                                                2. Bring a valid ID<br>
+                                                3. Cash out the check at any bank branch
+                                            </div>
+                                        </div>
+                                    </div>
+                                @else
+                                    <!-- Bank Transfer -->
+                                    <div style="margin-top: 20px; padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px;">
+                                        <h4 style="margin: 0 0 12px 0; color: #155724; font-size: 15px;">
+                                            <i class="fas fa-check-circle"></i> Salary Transferred
+                                        </h4>
+                                        <div style="font-size: 13px; color: #155724; line-height: 1.6;">
+                                            <p style="margin: 0 0 10px 0;">Your salary has been transferred to your bank account ending in <strong>{{ substr($payslip->transfer_account_number, -4) }}</strong>.</p>
+                                            <div style="background: white; padding: 10px; border-radius: 6px; margin-top: 10px;">
+                                                <div style="margin-bottom: 5px;"><strong>Reference Number:</strong> {{ $payslip->transfer_reference_number }}</div>
+                                                <div style="margin-bottom: 5px;"><strong>Bank:</strong> {{ $payslip->transfer_bank_name }}</div>
+                                                <div style="margin-bottom: 5px;"><strong>Amount:</strong> ₱{{ number_format($payslip->net_pay, 2) }}</div>
+                                                <div><strong>Transfer Date:</strong> {{ $payslip->transfer_date->format('M d, Y h:i A') }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            @endif
                         </div>
                     </div>
 

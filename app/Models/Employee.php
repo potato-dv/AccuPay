@@ -71,6 +71,11 @@ class Employee extends Model
         return $this->hasMany(Loan::class)->where('status', 'approved')->where('remaining_balance', '>', 0);
     }
 
+    public function employeeRecords()
+    {
+        return $this->hasMany(EmployeeRecord::class);
+    }
+
     public function getFullNameAttribute()
     {
         $middle = $this->middle_name ? ' ' . $this->middle_name . ' ' : ' ';

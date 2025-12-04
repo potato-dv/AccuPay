@@ -3,20 +3,20 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\ApproveLoanRequest;
-use App\Http\Requests\CreateUserAccountRequest;
-use App\Http\Requests\GeneratePayrollRequest;
-use App\Http\Requests\RejectLeaveRequest;
-use App\Http\Requests\RejectLoanRequest;
-use App\Http\Requests\ReplySupportReportRequest;
-use App\Http\Requests\StoreAttendanceRequest;
-use App\Http\Requests\StoreEmployeeRequest;
-use App\Http\Requests\UpdateAttendanceRequest;
-use App\Http\Requests\UpdateEmployeeRequest;
-use App\Http\Requests\UpdateLoanPaymentRequest;
-use App\Http\Requests\UpdateLoanRequest;
-use App\Http\Requests\UpdatePayrollRequest;
-use App\Http\Requests\UpdateSupportStatusRequest;
+use App\Http\Requests\Admin\ApproveLoanRequest;
+use App\Http\Requests\Admin\CreateUserAccountRequest;
+use App\Http\Requests\Admin\GeneratePayrollRequest;
+use App\Http\Requests\Admin\RejectLeaveRequest;
+use App\Http\Requests\Admin\RejectLoanRequest;
+use App\Http\Requests\Admin\ReplySupportReportRequest;
+use App\Http\Requests\Admin\StoreAttendanceRequest;
+use App\Http\Requests\Admin\StoreEmployeeRequest;
+use App\Http\Requests\Admin\UpdateAttendanceRequest;
+use App\Http\Requests\Admin\UpdateEmployeeRequest;
+use App\Http\Requests\Admin\UpdateLoanPaymentRequest;
+use App\Http\Requests\Admin\UpdateLoanRequest;
+use App\Http\Requests\Admin\UpdatePayrollRequest;
+use App\Http\Requests\Admin\UpdateSupportStatusRequest;
 use App\Models\Attendance;
 use App\Models\ActivityLog;
 use App\Models\Employee;
@@ -26,15 +26,16 @@ use App\Models\Payroll;
 use App\Models\Payslip;
 use App\Models\SupportReport;
 use App\Models\User;
-use App\Services\AttendanceService;
-use App\Services\EmployeeService;
-use App\Services\ExportService;
-use App\Services\LeaveService;
-use App\Services\LoanService;
-use App\Services\PayrollService;
-use App\Services\ReportService;
-use App\Services\SupportService;
-use App\Services\UserAccountService;
+use App\Services\Admin\AttendanceService;
+use App\Services\Admin\EmployeeService;
+use App\Services\Admin\ExportService;
+use App\Services\Admin\LeaveService;
+use App\Services\Admin\LoanService;
+use App\Services\Admin\PayrollService;
+use App\Services\Admin\ReportService;
+use App\Services\Admin\SupportService;
+use App\Services\Admin\UserAccountService;
+use App\Services\Admin\EmployeeRecordService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -48,6 +49,7 @@ class AdminController extends Controller
         private LoanService $loanService,
         private ReportService $reportService,
         private ExportService $exportService,
+        private EmployeeRecordService $employeeRecordService,
         private SupportService $supportService,
         private UserAccountService $userAccountService
     ) {
@@ -293,7 +295,7 @@ class AdminController extends Controller
 
     public function approvePayroll($id)
     {
-        $payroll = Payroll::findOrFail($id);
+        $payroll = Payroll::with('payslips.employee')->findOrFail($id);
         
         if ($payroll->status !== 'pending') {
             return redirect()
@@ -302,6 +304,20 @@ class AdminController extends Controller
         }
 
         $payroll->update(['status' => 'approved']);
+
+        // Create employee record snapshots for all employees in this payroll
+        foreach ($payroll->payslips as $payslip) {
+            if ($payslip->employee) {
+                $record = \App\Models\EmployeeRecord::createSnapshot(
+                    $payslip->employee,
+                    'snapshot',
+                    "Payroll approved for period {$payroll->payroll_period}"
+                );
+                
+                // Auto-approve the employee record
+                $record->approve(auth()->id());
+            }
+        }
 
         // Log activity
         ActivityLog::log(
@@ -387,6 +403,37 @@ class AdminController extends Controller
             'totalLoanBalance',
             'totalMonthlyDeduction'
         ));
+    }
+
+    public function sendSalary($id)
+    {
+        try {
+            $payslip = Payslip::with('employee')->findOrFail($id);
+            
+            // Check if salary already sent
+            if ($payslip->is_salary_sent) {
+                return back()->with('error', 'Salary has already been sent to this employee.');
+            }
+            
+            // Check if payroll is approved
+            if ($payslip->payroll->status !== 'approved') {
+                return back()->with('error', 'Payroll must be approved before sending salary.');
+            }
+            
+            $this->payrollService->sendSalary($payslip);
+            
+            ActivityLog::log(
+                'create',
+                'payroll',
+                "Sent salary to {$payslip->employee->full_name} - ₱" . number_format($payslip->net_pay, 2) . " (Ref: {$payslip->transfer_reference_number})",
+                $payslip->id,
+                ['employee' => $payslip->employee->full_name, 'amount' => $payslip->net_pay, 'reference' => $payslip->transfer_reference_number]
+            );
+            
+            return back()->with('success', 'Salary sent successfully! Reference: ' . $payslip->transfer_reference_number);
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to send salary: ' . $e->getMessage());
+        }
     }
 
     public function deletePayroll($id)
@@ -858,6 +905,59 @@ class AdminController extends Controller
             $currentDate->addDay();
         }
         
+        
         return $allDates;
     }
+
+    public function manageEmployeeRecords(Request $request)
+    {
+        $search = $request->input('search', '');
+        $employees = $this->employeeRecordService->getEmployeesWithRecordCounts($search);
+
+        return view('admin.employee_records', compact('employees'));
+    }
+
+    public function viewEmployeeRecord($employeeId)
+    {
+        $data = $this->employeeRecordService->getEmployeeRecords($employeeId);
+        $employee = $data['employee'];
+
+        // Get all payslips grouped by year and period
+        $payrollHistory = Payslip::where('employee_id', $employeeId)
+            ->with('payroll')
+            ->join('payrolls', 'payslips.payroll_id', '=', 'payrolls.id')
+            ->where('payrolls.status', 'approved')
+            ->orderBy('payrolls.created_at', 'desc')
+            ->select('payslips.*')
+            ->get()
+            ->groupBy(function($payslip) {
+                if (preg_match('/\d{4}/', $payslip->payroll->payroll_period, $matches)) {
+                    return $matches[0];
+                }
+                return $payslip->created_at->format('Y');
+            });
+
+        // Calculate totals
+        $totalEarnings = Payslip::where('employee_id', $employeeId)
+            ->join('payrolls', 'payslips.payroll_id', '=', 'payrolls.id')
+            ->where('payrolls.status', 'approved')
+            ->sum('net_pay');
+
+        $totalLoans = Loan::where('employee_id', $employeeId)
+            ->where('status', 'approved')
+            ->sum('amount');
+
+        $remainingLoans = Loan::where('employee_id', $employeeId)
+            ->where('status', 'approved')
+            ->sum('remaining_balance');
+
+        return view('admin.employee_record_detail', compact(
+            'employee',
+            'payrollHistory',
+            'totalEarnings',
+            'totalLoans',
+            'remainingLoans'
+        ));
+    }
 }
+

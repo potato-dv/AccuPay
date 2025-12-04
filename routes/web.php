@@ -64,6 +64,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/employees/delete/{id}', [AdminController::class, 'deleteEmployee'])->name('admin.employees.delete');
     Route::delete('/admin/employees/destroy/{id}', [AdminController::class, 'destroyEmployee'])->name('admin.employees.destroy');
     
+    // Employee Records routes
+    Route::get('/admin/employee-records', [AdminController::class, 'manageEmployeeRecords'])->name('admin.employee.records');
+    Route::get('/admin/employee-records/{employeeId}', [AdminController::class, 'viewEmployeeRecord'])->name('admin.employee.record.view');
+    
     // Payroll routes
     Route::get('/admin/payroll', [AdminController::class, 'managePayroll'])->name('admin.payroll');
     Route::post('/admin/payroll/generate', [AdminController::class, 'generatePayroll'])->name('admin.payroll.generate');
@@ -73,6 +77,7 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/admin/payroll/approve/{id}', [AdminController::class, 'approvePayroll'])->name('admin.payroll.approve');
     Route::delete('/admin/payroll/delete/{id}', [AdminController::class, 'deletePayroll'])->name('admin.payroll.delete');
     Route::get('/admin/payslip/view/{id}', [AdminController::class, 'viewEmployeePayslip'])->name('admin.viewEmployeePayslip');
+    Route::post('/admin/payslip/send-salary/{id}', [AdminController::class, 'sendSalary'])->name('admin.payslip.sendSalary');
     
     Route::get('/admin/payslip', [AdminController::class, 'managePayslip'])->name('admin.payslip');
     

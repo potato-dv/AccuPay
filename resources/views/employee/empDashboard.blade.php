@@ -532,21 +532,53 @@
                 <!-- Attendance Summary -->
                 <section class="content-section">
                     <div class="section-header">
-                        <h3 class="section-title">Attendance This Month</h3>
-                        <span class="badge badge-info">{{ $attendance_count }} days recorded</span>
+                        <h3 class="section-title">Attendance Summary</h3>
+                        <form method="GET" action="{{ route('employee.dashboard') }}" style="display: flex; gap: 10px; align-items: center;">
+                            <select name="month" class="form-control" style="width: 120px; padding: 6px 10px; border: 1px solid #cbd5e0; border-radius: 6px;">
+                                @foreach(range(1, 12) as $month)
+                                    <option value="{{ $month }}" {{ $selected_month == $month ? 'selected' : '' }}>
+                                        {{ date('F', mktime(0, 0, 0, $month, 1)) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <select name="year" class="form-control" style="width: 100px; padding: 6px 10px; border: 1px solid #cbd5e0; border-radius: 6px;">
+                                @foreach(range(date('Y') - 2, date('Y')) as $year)
+                                    <option value="{{ $year }}" {{ $selected_year == $year ? 'selected' : '' }}>
+                                        {{ $year }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <button type="submit" style="padding: 6px 15px; background: #0057a0; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                                <i class="fa-solid fa-filter"></i> Filter
+                            </button>
+                        </form>
+                    </div>
+                    <div style="background: #f7fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #0057a0;">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: center;">
+                            <div>
+                                <div style="font-size: 32px; font-weight: 700; color: #00a86b;">{{ $present_days }}</div>
+                                <div style="font-size: 14px; color: #718096; margin-top: 6px; font-weight: 500;">Present Days</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 32px; font-weight: 700; color: #ed8936;">{{ $late_days }}</div>
+                                <div style="font-size: 14px; color: #718096; margin-top: 6px; font-weight: 500;">Late Days</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 32px; font-weight: 700; color: #e53e3e;">{{ $absent_days }}</div>
+                                <div style="font-size: 14px; color: #718096; margin-top: 6px; font-weight: 500;">Absent Days</div>
+                            </div>
+                        </div>
                     </div>
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th>Status</th>
-                                <th>Count</th>
-                                <th>Details</th>
+                                <th>Dates</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td><span class="badge badge-success">Present</span></td>
-                                <td><strong>{{ $present_days }}</strong></td>
+                                <td><span class="badge badge-success">Present ({{ $present_days }})</span></td>
                                 <td>
                                     @php
                                         $presentDates = $attendance_records->where('status', 'present')->take(3);
@@ -557,13 +589,12 @@
                                             <span style="color: #718096;">+{{ $attendance_records->where('status', 'present')->count() - 3 }} more</span>
                                         @endif
                                     @else
-                                        <span style="color: #a0aec0;">No records</span>
+                                        <span style="color: #a0aec0;">No records yet</span>
                                     @endif
                                 </td>
                             </tr>
                             <tr>
-                                <td><span class="badge badge-warning">Late</span></td>
-                                <td><strong>{{ $late_days }}</strong></td>
+                                <td><span class="badge badge-warning">Late ({{ $late_days }})</span></td>
                                 <td>
                                     @php
                                         $lateDates = $attendance_records->where('status', 'late');
@@ -571,13 +602,12 @@
                                     @if($lateDates->count() > 0)
                                         {{ $lateDates->pluck('date')->map(fn($d) => $d->format('M d'))->implode(', ') }}
                                     @else
-                                        <span style="color: #a0aec0;">None</span>
+                                        <span style="color: #a0aec0;">Perfect! No late arrivals</span>
                                     @endif
                                 </td>
                             </tr>
                             <tr>
-                                <td><span class="badge badge-danger">Absent</span></td>
-                                <td><strong>{{ $absent_days }}</strong></td>
+                                <td><span class="badge badge-danger">Absent ({{ $absent_days }})</span></td>
                                 <td>
                                     @if($absent_days > 0)
                                         @php
@@ -614,10 +644,10 @@
                                                 <span style="color: #718096;">+{{ count($absentDatesList) - 5 }} more</span>
                                             @endif
                                         @else
-                                            <span style="color: #a0aec0;">Calculated: {{ $absent_days }} days</span>
+                                            <span style="color: #a0aec0;">No attendance records</span>
                                         @endif
                                     @else
-                                        <span style="color: #a0aec0;">None</span>
+                                        <span style="color: #00a86b;">Perfect attendance! 🎉</span>
                                     @endif
                                 </td>
                             </tr>

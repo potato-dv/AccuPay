@@ -11,7 +11,8 @@ class Payslip extends Model
         'bonuses', 'gross_pay', 'tax', 'tax_rate', 'sss', 'sss_rate', 'philhealth', 'philhealth_rate', 
         'pagibig', 'pagibig_rate', 'other_deductions', 'loan_deductions', 'late_deduction', 
         'undertime_deduction', 'absence_deduction', 'total_deductions', 'net_pay', 'hours_worked', 'overtime_hours',
-        'undertime_hours', 'days_present', 'days_absent', 'days_late'
+        'undertime_hours', 'days_present', 'days_absent', 'days_late',
+        'transfer_reference_number', 'transfer_bank_name', 'transfer_account_number', 'transfer_date', 'is_salary_sent'
     ];
 
     protected $casts = [
@@ -38,6 +39,8 @@ class Payslip extends Model
         'hours_worked' => 'decimal:2',
         'overtime_hours' => 'decimal:2',
         'undertime_hours' => 'decimal:2',
+        'transfer_date' => 'datetime',
+        'is_salary_sent' => 'boolean',
     ];
 
     public function payroll()

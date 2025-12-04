@@ -32,8 +32,7 @@
             position: fixed;
             left: 0;
             transition: all 0.3s ease;
-            overflow-y: auto;
-            overflow-x: hidden;
+            overflow: hidden;
         }
 
         .sidebar-toggle {
@@ -51,10 +50,6 @@
         .sidebar ul {
             list-style: none;
             padding: 0;
-        }
-
-        .sidebar ul li {
-            margin: 8px 0;
         }
 
         .sidebar ul li a {
@@ -77,9 +72,13 @@
             color: #fff;
         }
 
-        .sidebar ul li a i {
-            font-size: 18px;
-            width: 24px;
+        .sidebar.collapsed {
+            width: 70px;
+        }
+
+        .sidebar.collapsed .menu-text,
+        .sidebar.collapsed .logo-text {
+            display: none;
         }
 
         /* NAVBAR */
@@ -87,16 +86,16 @@
             position: fixed;
             top: 0;
             left: 250px;
-            width: calc(100% - 250px);
+            right: 0;
             height: 70px;
-            background: white;
+            padding: 0 30px;
+            background: #fff;
+            border-bottom: 1px solid #e2e8f0;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 30px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            z-index: 100;
             transition: all 0.3s ease;
-            z-index: 999;
         }
 
         .navbar-left {

@@ -17,7 +17,8 @@
             <li><a href="{{ route('admin.dashboard') }}"><i class="fa-solid fa-house"></i> <span class="menu-text">Dashboard</span></a></li>
             <li><a href="{{ route('admin.attendance') }}"><i class="fa-solid fa-calendar-days"></i> <span class="menu-text">Manage Attendance</span></a></li>
             <li><a href="{{ route('admin.employees') }}"><i class="fa-solid fa-users"></i> <span class="menu-text">Employee List</span></a></li>
-            <li class="active"><a href="{{ route('admin.payroll') }}"><i class="fa-solid fa-file-invoice-dollar"></i> <span class="menu-text">Manage Payroll</span></a></li>
+            <li><a href="{{ route('admin.employee.records') }}"><i class="fa-solid fa-folder-open"></i> <span class="menu-text">Employee Records</span></a></li>
+            <li><a href="{{ route('admin.payroll') }}"><i class="fa-solid fa-file-invoice-dollar"></i> <span class="menu-text">Manage Payroll</span></a></li>
             <li><a href="{{ route('admin.payslip') }}"><i class="fa-solid fa-file-lines"></i> <span class="menu-text">Manage Payslip</span></a></li>
             <li><a href="{{ route('admin.leave') }}"><i class="fa-solid fa-envelope-open-text"></i> <span class="menu-text">Leave Requests</span></a></li>
             <li><a href="{{ route('admin.loans') }}"><i class="fa-solid fa-hand-holding-dollar"></i> <span class="menu-text">Loans</span></a></li>
@@ -254,6 +255,53 @@
                                     <td style="padding: 10px 0 0 0; text-align: right; font-weight: 700; font-size: 15px; color: #28a745;">₱{{ number_format($payslip->net_pay, 2) }}</td>
                                 </tr>
                             </table>
+
+                            <!-- Bank Transfer Details -->
+                            @if($payslip->is_salary_sent)
+                                @if(str_starts_with($payslip->transfer_reference_number, 'CHK-'))
+                                    <!-- Check Issued -->
+                                    <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px;">
+                                        <h4 style="margin: 0 0 10px 0; color: #856404; font-size: 14px;">
+                                            <i class="fas fa-money-check"></i> Check Issued
+                                        </h4>
+                                        <div style="font-size: 13px; color: #856404;">
+                                            <div style="margin-bottom: 5px;"><strong>Check Number:</strong> {{ $payslip->transfer_reference_number }}</div>
+                                            <div style="margin-bottom: 5px;"><strong>Amount:</strong> ₱{{ number_format($payslip->net_pay, 2) }}</div>
+                                            <div style="margin-bottom: 5px;"><strong>Pickup Location:</strong> {{ $payslip->transfer_account_number }}</div>
+                                            <div><strong>Issue Date:</strong> {{ $payslip->transfer_date->format('M d, Y h:i A') }}</div>
+                                        </div>
+                                        <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 4px; font-size: 12px; color: #856404;">
+                                            <i class="fas fa-info-circle"></i> Employee must pick up check at HR office and cash out at any bank.
+                                        </div>
+                                    </div>
+                                @else
+                                    <!-- Bank Transfer -->
+                                    <div style="margin-top: 20px; padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px;">
+                                        <h4 style="margin: 0 0 10px 0; color: #155724; font-size: 14px;">
+                                            <i class="fas fa-check-circle"></i> Salary Transferred
+                                        </h4>
+                                        <div style="font-size: 13px; color: #155724;">
+                                            <div style="margin-bottom: 5px;"><strong>Reference Number:</strong> {{ $payslip->transfer_reference_number }}</div>
+                                            <div style="margin-bottom: 5px;"><strong>Bank:</strong> {{ $payslip->transfer_bank_name }}</div>
+                                            <div style="margin-bottom: 5px;"><strong>Account:</strong> {{ $payslip->transfer_account_number }}</div>
+                                            <div><strong>Transfer Date:</strong> {{ $payslip->transfer_date->format('M d, Y h:i A') }}</div>
+                                        </div>
+                                    </div>
+                                @endif
+                            @elseif($payslip->payroll->status == 'approved')
+                                <div style="margin-top: 20px;">
+                                    <form action="{{ route('admin.payslip.sendSalary', $payslip->id) }}" method="POST" style="display: inline;">
+                                        @csrf
+                                        <button type="submit" class="btn-theme" style="width: 100%; padding: 12px; font-size: 14px;" onclick="return confirm('Send salary to {{ $payslip->employee->full_name }}?')">
+                                            @if($payslip->employee->bank_account_number && $payslip->employee->bank_name)
+                                                <i class="fas fa-university"></i> Send Salary to Bank Account
+                                            @else
+                                                <i class="fas fa-money-check"></i> Issue Check for Pickup
+                                            @endif
+                                        </button>
+                                    </form>
+                                </div>
+                            @endif
                         </div>
                     </div>
 
